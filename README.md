@@ -2,7 +2,9 @@
 
 Reviewers open the GitHub Pages site, select their name, and review their assigned cases. No reviewer account, email sign-in, or email service is required. Supabase stores case packets, assignments, ratings, and source-linked comments. The coordinator uses a separate authenticated workspace to manage assignments and export results.
 
-**Status:** source is public at `m3lonbread/pmxbench-reviewer-portal`; Pages and the new Supabase Free project are being configured. See [deployment status](DEPLOYMENT_STATUS.md) for verified progress.
+**Site:** https://m3lonbread.github.io/pmxbench-reviewer-portal/
+
+The site is published with a Supabase Free backend. Name-only access is awaiting owner acceptance of the access model below. See [deployment status](DEPLOYMENT_STATUS.md) for verified progress.
 
 ## Access model
 

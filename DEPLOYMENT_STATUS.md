@@ -7,11 +7,13 @@ The owner requested a simpler reviewer flow: select a name, with no email sign-i
 Verified hosting progress:
 
 - Code pushed to the owner-approved public repository: https://github.com/m3lonbread/pmxbench-reviewer-portal.
-- GitHub Pages enabled with GitHub Actions as its build source. The deployment workflow is included in this commit.
+- GitHub Pages deployed successfully through GitHub Actions at https://m3lonbread.github.io/pmxbench-reviewer-portal/.
+- Hosted entry screen and separate coordinator sign-in verified in the browser.
+- Deployment run 42955013491 passed build, all eight checks, backend type-check, static privacy audit, and Pages publishing.
 - Supabase Free organization PmxBench and project `pmxbench-reviewer-portal` created by the owner in West US (Oregon).
 - Both database migrations applied successfully.
 - All 53 official cases, 1,038 rubric criteria, and 66 Preliminary contacts imported into Supabase. Zero assignments or activated experts.
-- Direct anonymous database case access verified denied.
+- Live API checks pass: direct browser case access denied (401), coordinator requests require verified sign-in (401), disabled reviewer directory returns its preparation message (503).
 - Both Edge Functions deployed; Pages origin and coordinator callback URL configured.
 - Public Supabase URL and publishable key set as GitHub repository variables.
 - Public name selection remains disabled pending the owner's acceptance of the concrete access model.
@@ -25,4 +27,4 @@ Implemented and checked locally:
 - Eight PostgreSQL/source/configuration checks pass. Frontend build and backend type-check pass.
 - Static artifact privacy audit passes: no case packets, faculty contacts, or server credentials.
 
-Remaining: publish and verify Pages; obtain acceptance before disabling gateway JWT verification for the limited reviewer function and enabling public name access; verify hosted behavior. The configured Pages address is https://m3lonbread.github.io/pmxbench-reviewer-portal/ but no frontend deployment has been published yet. The existing private Site remains unchanged.
+Remaining: obtain acceptance before disabling gateway JWT verification for the limited reviewer function and enabling public name access, then verify the hosted name-selection response. The published site currently shows that reviewer access is being prepared. Coordinator email delivery and an assigned reviewer’s live write flow remain untested; no real experts have been activated or assigned. The existing private Site remains unchanged.

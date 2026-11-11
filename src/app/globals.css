@@ -69,3 +69,9 @@ button:focus-visible,a:focus-visible{outline-color:#42867d;}
 .entry-footer a{font-size:12px;font-weight:550;padding:8px 12px;border:1px solid #b7d8cf;background:#edf7f3;border-radius:7px;color:#2e655c;text-decoration:none;}
 .entry-footer a:hover{background:var(--brand);}
 .entry-link{color:#2e655c;font-weight:500;}
+
+.auth-methods{display:flex;gap:4px;padding:4px;background:#edf6f3;border:1px solid var(--border);border-radius:9px;width:min(360px,100%);}
+.auth-methods button{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:10px 14px;border-radius:6px;font-size:12px;color:#55766d;}
+.auth-methods button[aria-selected=true]{background:var(--brand);color:#234a46;box-shadow:0 1px 3px #234a4610;}
+.coordinator-entry .auth-form{margin:0 0 6px;}
+.coordinator-entry .auth-error{display:block;background:#fff6ec;border:1px solid #ebd9c1;padding:12px 16px;border-radius:8px;color:#795936;max-width:460px;text-align:left;}

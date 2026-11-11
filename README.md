@@ -61,9 +61,13 @@ Disable it with the same statement using `false`. This stops public directory, c
 
 ## Coordinator access
 
-Open the portal with `?coordinator=1`. Coordinator sign-in is separate from the reviewer name picker. Enable email authentication with confirmation; set Supabase's Site URL and redirect allowlist to the exact Pages URL and to that URL with `?coordinator=1`.
+Open the portal with `?coordinator=1`. **Password** is the default coordinator sign-in method and does not send an email. The owner creates the coordinator account and its password through Supabase Authentication → Users, using the email in the private coordinator allowlist. Use a password for this portal; it may differ from the host’s GitHub or Supabase dashboard credentials.
 
-Supabase's built-in email sender can serve project-team addresses for initial coordinator access. The owner can use that account without configuring an email provider for reviewers. If additional coordinators outside the Supabase team later need email sign-in, configure a suitable sender or another authenticated provider. Do not disable email ownership verification for coordinators.
+Coordinator sign-in is separate from reviewer name selection. The backend still requires a confirmed account and checks the private coordinator allowlist for every request. Do not enable public coordinator signup or expose a backend key to provision accounts. The owner must enter, save, and submit their own password.
+
+**Email link** is an optional fallback for an existing account. Set Supabase’s Site URL and redirect allowlist to the exact Pages URL and to that URL with `?coordinator=1`.
+
+The built-in sender currently allows only two emails per hour across a project and only reaches project-team addresses. Password sign-in avoids that email dependency. The email fallback uses a 60-second resend pause after success and an hour-long pause when the sender reports its email quota. These UI pauses do not alter Supabase’s limits. Password failures never trigger a sign-in email automatically. Reviewer name selection requires no email sender. Do not disable email confirmation globally to work around an email quota.
 
 After sign-in, confirm expert details, choose one or two cases, and set the profile to Verified to list it in the picker. Contact email is optional and does not control reviewer access. No real experts are automatically activated or assigned by the seed.
 

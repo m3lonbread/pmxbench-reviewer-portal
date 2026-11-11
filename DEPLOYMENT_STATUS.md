@@ -36,3 +36,10 @@ Branding and coordinator update, 10 November 2026:
 - GitHub Pages deployment 42957609012 succeeded for commit 962fe95. CI checks, the build, and static data audit passed. Live computed button background verified as `rgb(169, 217, 214)`.
 - Supabase primary account email refreshed to the owner's current verified GitHub primary email. The private portal coordinator allowlist and ignored bootstrap seed were corrected to that address; the previous coordinator email was removed. Personal email values remain outside public source.
 - Coordinator entry is available at `https://m3lonbread.github.io/pmxbench-reviewer-portal/?coordinator=1`. Sign-in email delivery still requires the owner to request and open their link.
+
+Coordinator password sign-in, 10 November 2026:
+
+- Added password sign-in as the default coordinator method, with email links retained as an optional fallback for existing accounts.
+- Password attempts never send email automatically. Email limit errors now explain the restriction and pause repeated requests. Passwords stay in the password field’s memory until submission and are not written to app storage, source, logs, or exports. Supabase manages credential verification and session storage.
+- Ten local checks pass, including password/email dispatch separation and email quota handling; frontend build and static privacy audit pass.
+- The owner reports setting their coordinator password through Supabase. Hosted sign-in verification is pending deployment.

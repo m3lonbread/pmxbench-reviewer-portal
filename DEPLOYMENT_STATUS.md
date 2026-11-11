@@ -60,3 +60,10 @@ Completed response activation:
 - Browser checks confirmed the coordinator totals (61 current profiles, 10 activated, 14 with plans, 28/53 cases active) and a three-case reviewer view without assignment controls. No review submissions or invitations were created.
 - Both Edge Functions were updated, and Pages deployment 42961265688 for commit a50c70c passed all 11 checks, backend type-check, frontend build, and the static privacy audit.
 - Matching is a coordinator inference from the tracker’s modeling/research fields and linked institutional/conference/publication sources. The rationale is stored per profile. Individual reviewers have not yet confirmed their case preferences. The conditional epidemiology/outcomes-to-QSP match is explicitly marked tentative in the corresponding draft notes.
+
+Website test workflow, 10 November 2026:
+
+- Added support for explicitly labeled fictional test packets (`isTest: true`) and test profiles (`source: Website test fixture`). Test records remain manageable in the coordinator workspace, while benchmark totals and sample previews exclude them.
+- Coordinator benchmark CSV/JSON exports exclude test profiles, assignments, ratings, and comments. General test comments are excluded by profile identity; mixed-source comments containing any test quotation are also excluded. The JSON export reports excluded record counts. Individual reviewer exports retain test data for testing and label test cases.
+- Prepared one synthetic case 0 with a full prompt, a material description, and four complete criteria totaling 100 points. Its fixture/SQL and profile details stay in ignored backend/private/. The 53 official packets are unchanged.
+- Local database checks confirmed idempotent fixture creation, preserved official cases, and exact source normalization. Live checks confirmed the test identity has only its one fictional case, cannot access official cases or coordinator routes, and can persist general feedback, source-linked feedback, and all six rating categories after reopening a session.

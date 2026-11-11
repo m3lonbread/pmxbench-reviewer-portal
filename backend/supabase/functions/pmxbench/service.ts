@@ -1,4 +1,5 @@
 import {createClient} from '@supabase/supabase-js';
+import {benchmarkResults} from './results.ts';
 import {assertReviewerRoute,publicReviewer} from './picker.ts';
 import {ApiError,assertCases,assertProfile,normalizeQuotes,requireCoordinator,requireWrite,validateRatingPatch} from './domain.ts';
 const origin=Deno.env.get('PMXBENCH_FRONTEND_ORIGIN')??'';
@@ -27,7 +28,7 @@ type Actor=Awaited<ReturnType<typeof actor>>;
 async function meta(){return (await query(db.from('pmx_cases').select('meta'))).map((r:any)=>r.meta).sort((a:any,b:any)=>a.number-b.number);}
 async function assigned(id:string){return (await query(db.from('pmx_assignments').select('case_id').eq('reviewer_id',id))).map((r:any)=>r.case_id);}
 async function scope(a:Actor,preview:string|null){
- if(preview){requireCoordinator(a);if(preview==='reviewer-demo')return {actor:a,reviewerId:'preview:example-reviewer',name:'Example reviewer',email:a.email,cases:(await meta()).slice(0,2),preview:true,samplePreview:true,status:'verified'};const p=await query(db.from('pmx_experts').select('*').eq('id',preview).maybeSingle());if(!p)throw new ApiError(404,'Expert not found.');const ids=await assigned(p.id);return {actor:a,reviewerId:p.id,name:p.name,email:p.login_email,cases:ids.length?(await query(db.from('pmx_cases').select('meta').in('id',ids))).map((r:any)=>r.meta).sort((x:any,y:any)=>x.number-y.number):[],preview:true,samplePreview:false,status:p.status};}
+ if(preview){requireCoordinator(a);if(preview==='reviewer-demo')return {actor:a,reviewerId:'preview:example-reviewer',name:'Example reviewer',email:a.email,cases:(await meta()).filter((c:any)=>!c.isTest).slice(0,2),preview:true,samplePreview:true,status:'verified'};const p=await query(db.from('pmx_experts').select('*').eq('id',preview).maybeSingle());if(!p)throw new ApiError(404,'Expert not found.');const ids=await assigned(p.id);return {actor:a,reviewerId:p.id,name:p.name,email:p.login_email,cases:ids.length?(await query(db.from('pmx_cases').select('meta').in('id',ids))).map((r:any)=>r.meta).sort((x:any,y:any)=>x.number-y.number):[],preview:true,samplePreview:false,status:p.status};}
  const ids=a.coordinator?null:await assigned(a.reviewerId);
  const cases=ids===null?await meta():ids.length?(await query(db.from('pmx_cases').select('meta').in('id',ids))).map((r:any)=>r.meta).sort((x:any,y:any)=>x.number-y.number):[];
  return {actor:a,reviewerId:a.reviewerId,name:a.name,email:a.email,cases,preview:false,samplePreview:false,status:'verified'};
@@ -67,7 +68,7 @@ async function route(a:Actor,path:string,method:string,data:Record<string,any>){
   }
   if(p==='/api/admin/results'&&method==='GET'){
    const [people,allocations,reviews,comments]=await Promise.all([collect(()=>db.from('pmx_experts').select(personColumns).order('name').order('id')),collect(()=>db.from('pmx_assignments').select('*').order('reviewer_id').order('case_id')),collect(()=>db.from('pmx_reviews').select('*').order('reviewer_id').order('case_id')),collect(()=>db.from('pmx_comments').select('*').order('created_at').order('id'))]);
-   return {schemaVersion:4,exportedAt:new Date().toISOString(),expertiseScaleVersion:'hands-on-experience-v1',reviewers:people,assignments:allocations,caseReviews:reviews,comments};
+   return {schemaVersion:5,exportedAt:new Date().toISOString(),expertiseScaleVersion:'hands-on-experience-v1',...benchmarkResults(people,allocations,reviews,comments,await meta())};
   }
   if(p==='/api/admin/reviewers'&&method==='POST'||p.startsWith('/api/admin/reviewers/')&&method==='PATCH'){
    assertProfile(data);if(data.caseIds!==undefined)assertCases(data.caseIds);

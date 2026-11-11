@@ -1,6 +1,6 @@
 import version from './packet-version.json';
 export type Section = {id:string;number:string;title:string;type:string};
-export type ReviewCase = {id:string;slug:string;number:number;title:string;track:string;trackCode:string;subtitle:string;revision:string;sourceRoot:string;fileCount:number;criterionCount:number;sections:Section[]};
+export type ReviewCase = {isTest?:boolean;id:string;slug:string;number:number;title:string;track:string;trackCode:string;subtitle:string;revision:string;sourceRoot:string;fileCount:number;criterionCount:number;sections:Section[]};
 export type MaterialDescription={id:string;name:string;description:string;format:string};
 export type RubricBlock = {id:string;text?:string;style?:string;rows?:string[][]};
 export type CaseDetail = ReviewCase & {prompt:string;rubric:RubricBlock[];materials:MaterialDescription[]};

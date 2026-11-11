@@ -9,3 +9,5 @@ backend/supabase/.temp/
 backend/supabase/.branches/
 *.pem
 *.key
+
+backend/.deploy/

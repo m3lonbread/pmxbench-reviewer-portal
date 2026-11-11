@@ -1,3 +1,8 @@
 project_id = "pmxbench-review-backend"
 [functions.pmxbench]
 verify_jwt = true
+
+# Public name selection uses a deliberately limited handler.
+# Coordinator endpoints remain in the authenticated function above.
+[functions.pmxbench-reviewer]
+verify_jwt = false

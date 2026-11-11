@@ -1,23 +1,31 @@
-# PmxBench on GitHub Pages
+# PmxBench reviewer portal
 
-This deployment splits the full portal into:
+Reviewers open the GitHub Pages site, select their name, and review their assigned cases. No reviewer account, email sign-in, or email service is required. Supabase stores case packets, assignments, ratings, and source-linked comments. The coordinator uses a separate authenticated workspace to manage assignments and export results.
 
-- A static React frontend on GitHub Pages.
-- A private Supabase PostgreSQL database, Supabase Auth, and the authenticated `pmxbench` Edge Function.
+**Status:** source is public at `m3lonbread/pmxbench-reviewer-portal`; Pages and the new Supabase Free project are being configured. See [deployment status](DEPLOYMENT_STATUS.md) for verified progress.
 
-The existing coordinator/reviewer interface is preserved. Experts receive one or two assigned cases, complete prompts and rubrics, materials descriptions, source-linked comments, general feedback, six ratings, and account-based saving. Coordinator roster/assignment controls remain coordinator-only. The two-case reviewer preview remains read-only.
+## Access model
 
-**Status:** the code is prepared locally. Target repository: `m3lonbread/pmxbench-reviewer-portal`. A new Supabase Free project is being configured. No GitHub Pages URL has been published by this project yet.
+Name selection is self-reported identity. Anyone with the portal link can choose any activated reviewer, access that reviewer's assigned cases and saved answers, and submit under that name. The portal is suitable only when that trust model is acceptable. Submitted reviews record `self_selected_name` in their identity metadata. Selecting a name does not verify the person.
 
-## Private data
+The picker lists only Verified reviewers with assigned cases. Preliminary and Inactive profiles stay out of the picker. Its public directory includes only ID, name, affiliation, and assigned-case count. Contact emails, coordinator notes, the complete roster, assignment editing, and aggregate exports remain coordinator-only.
 
-`backend/private/` is ignored by Git and must never be uploaded to a public repository or the Pages artifact. It holds the 53 official case packets and the optional preliminary contact payload. No case packets, contact records, submissions, or backend service keys belong in `public`, frontend imports, or `VITE_*` variables. The static frontend receives case content only through authenticated backend calls.
+Each reviewer receives one or two cases. Complete prompts and grading rubrics are included, with materials descriptions only. Staged files and summary cards are not provided. Quotations retain their exact case, subsection, passage, and source revision. General comments and six categorical ratings are supported.
 
-All application tables enable row-level security and deny direct access to anonymous and authenticated browser clients. The Edge Function independently validates the user JWT with Supabase Auth, requires a verified email, derives coordinator/reviewer roles from private database records, checks assignments for every case, and verifies quotation text against the authoritative source. Its service key remains server-side. Private database helper RPCs are executable only by the service role.
+The name-selection service accepts only directory, session, assigned-case, rating, and comment requests. It rejects coordinator endpoints and all preview parameters. Every selected profile must remain Verified and assigned before data is returned or saved. Direct database access is denied to browser clients, including the public key.
 
-## 1. Backend project
+## Private initial data
 
-Create or select a Supabase project owned by the intended host. In a new project, apply `backend/supabase/migrations/202611100001_review_portal.sql` through the SQL editor or your normal migration process. This creates the private tables and atomic review/assignment operations. It does not add real users, data, or coordinator emails.
+`backend/private/` is ignored by Git and excluded from the Pages build. It contains the 53 official case packets and optional preliminary contact payload. Case packets, contacts, submissions, and backend keys must never be committed or placed in frontend imports, `public/`, or `VITE_*` values.
+
+The application tables enable row-level security and deny direct anonymous/authenticated table access. The server checks case assignments and authoritative quote text before using its server-only database client. This protects coordinator data and request scope; it does not turn name selection into identity authentication.
+
+## Backend setup
+
+Create a Supabase Free project owned by the host. Apply the SQL migrations in filename order:
+
+1. `backend/supabase/migrations/202611100001_review_portal.sql`
+2. `backend/supabase/migrations/202611100002_name_selection.sql`
 
 Prepare private initial data locally:
 
@@ -26,38 +34,47 @@ npm ci
 npm run seed:prepare -- --coordinator-email THE_ACTUAL_COORDINATOR_EMAIL
 ```
 
-Add `--include-contacts` only when the 66 preliminary contacts should be imported. Run the generated `backend/private/seed.sql` in the selected project's SQL editor. It includes all 53 cases and 1,038 rubric criteria. Contacts import as Preliminary, with no assignments or linked auth identities. It sends no invitations. The initial payload files are intentionally kept outside source control; obtain them separately from the site owner if cloning the public repository.
+Add `--include-contacts` when the 66 preliminary contacts should be imported. Run `backend/private/seed.sql` in the database. The seed contains 53 cases and 1,038 rubric criteria. Contacts import as Preliminary with no assignments, activated access, or linked identities. No invitations are sent. These initial payload files must be obtained separately from the owner when cloning the public repository.
 
-Deploy the Edge Function from the `backend` directory using the Supabase CLI or dashboard:
+Deploy both Edge Functions from the `backend` directory:
 
 ```sh
 supabase link --project-ref YOUR_PROJECT_REF
 supabase functions deploy pmxbench
+supabase functions deploy pmxbench-reviewer
 supabase secrets set PMXBENCH_FRONTEND_ORIGIN=https://YOUR_GITHUB_ACCOUNT.github.io
 ```
 
-Keep `verify_jwt = true` in `backend/supabase/config.toml`. The function also authenticates the caller with `auth.getUser`. Supabase supplies its project URL and server service-role key to the function; these values never go to the frontend. Never expose `SUPABASE_SERVICE_ROLE_KEY` or a secret key in GitHub repository variables or browser code.
+The config keeps JWT verification enabled for `pmxbench` (coordinator) and disabled for `pmxbench-reviewer` (the limited public name-selection handler). The coordinator handler also validates the user through Supabase Auth and checks the private coordinator allowlist. Never expose a service-role or secret key to the frontend or GitHub variables.
 
-## 2. Reviewer sign-in
+For dashboard deployment, `node scripts/bundle-dashboard.mjs` produces single-file equivalents in ignored `backend/.deploy/`. Paste each bundle into the Supabase function editor using its matching function name. Check the JWT verification setting for each function against `backend/supabase/config.toml`.
 
-Enable email authentication with email confirmation. Set the Supabase Auth Site URL and redirect allowlist to the exact Pages URL, including the repository path and trailing slash.
+Name selection starts disabled. After the owner accepts the access model above, enable it with:
 
-This interface uses email sign-in links and PKCE. A working custom SMTP sender must be configured before external faculty use email login: Supabase's default sender only supports pre-authorized project-team addresses and is not the production sender. No verification or invitation emails are sent during code preparation. Configure the sender in the project's Auth settings; keep its credentials in Supabase, never this repository.
+```sql
+update public.pmx_settings set value='true'::jsonb where key='name_selection_enabled';
+```
 
-You can later configure an institutional/social sign-in provider if preferred, with a matching frontend button and a verified identity claim. Do not bypass email ownership verification.
+Disable it with the same statement using `false`. This stops public directory, case, and review access without deleting saved data.
 
-## 3. GitHub Pages repository
+## Coordinator access
 
-Use the target repository's root for this project. Do not copy `backend/private`, `.env` files, `node_modules`, or local runtime data into Git. Configure these **public** repository variables:
+Open the portal with `?coordinator=1`. Coordinator sign-in is separate from the reviewer name picker. Enable email authentication with confirmation; set Supabase's Site URL and redirect allowlist to the exact Pages URL and to that URL with `?coordinator=1`.
+
+Supabase's built-in email sender can serve project-team addresses for initial coordinator access. The owner can use that account without configuring an email provider for reviewers. If additional coordinators outside the Supabase team later need email sign-in, configure a suitable sender or another authenticated provider. Do not disable email ownership verification for coordinators.
+
+After sign-in, confirm expert details, choose one or two cases, and set the profile to Verified to list it in the picker. Contact email is optional and does not control reviewer access. No real experts are automatically activated or assigned by the seed.
+
+## GitHub Pages deployment
+
+Set two **public** repository variables:
 
 - `VITE_SUPABASE_URL`: the project's HTTPS origin.
 - `VITE_SUPABASE_PUBLISHABLE_KEY`: its browser publishable key, or legacy public anon key.
 
-Never use the service-role key here. The build checks for missing settings and refuses recognizable server keys.
+The build rejects recognizable server keys and missing settings. In Settings → Pages, choose **GitHub Actions**, then push to `main` or run `.github/workflows/pages.yml`. The workflow installs dependencies, runs PostgreSQL/access/source checks, type-checks the backend, builds the frontend, audits the static artifact, and deploys `dist` with the official Pages actions. Repository-path asset URLs are configured automatically.
 
-In repository Settings → Pages, choose **GitHub Actions**. Push to `main` or run `.github/workflows/pages.yml`. The workflow installs, runs PostgreSQL/security checks, type-checks the backend, builds only the static frontend, and deploys `dist` using the official Pages actions. It automatically supports both a project URL (`/repository/`) and an account-level `username.github.io` repository (`/`).
-
-GitHub Pages can publish the interface publicly while the backend continues to require authenticated, authorized access. No private scientific content or faculty data is included in its build artifact. Private Pages availability depends on the host's GitHub plan; do not assume a private source repository makes the Pages URL private.
+The source and interface are public. Scientific packets and contact records are absent from the static artifact; active assigned case/review data is available through the deliberately public name-selection flow described above.
 
 ## Development and validation
 
@@ -67,27 +84,18 @@ npm test
 npm run typecheck:backend
 ```
 
-For local frontend development, copy `.env.example` to `.env.local`, set the public project values, and run `npm run dev`. Set the matching local origin on a development backend and configure its redirect allowlist. Use a separate test project for real authentication tests.
+For local frontend development, copy `.env.example` to `.env.local`, set the public project values, and run `npm run dev`. Use a separate development backend and matching origin/redirect configuration for live writes.
 
-An unconfigured local rendering/build can be checked with:
+An unconfigured local rendering can be built with `ALLOW_UNCONFIGURED_BUILD=1 npm run build`. The deployment workflow rejects that override. It does not create a working backend or authorize publishing a placeholder.
 
-```sh
-ALLOW_UNCONFIGURED_BUILD=1 npm run build
-```
+Tests use real PostgreSQL in PGlite to check direct-data denial, privileged RPC protection, assignment limits, atomic changes, optional contact emails, granular rating merges, missing-value clearing, and reviewer separation. Source checks verify canonical quotations and UTF-16 offsets. Name-picker checks verify the minimal public directory and rejection of coordinator/preview routes.
 
-That override is rejected by the deployment workflow's CI environment. It does not create a functioning backend or authorize publishing a placeholder site.
+## Existing Site
 
-The database tests run real PostgreSQL in PGlite and check direct-data denial, privileged RPC protection, one/two-case limits, atomic status/assignment changes, granular rating merges, missing-value clearing, and separate reviewer records. Source tests verify exact UTF-16 quotation offsets and canonical source context. Live authentication, SMTP delivery, and end-to-end hosted behavior still require the selected project and accounts.
-
-## Migration from the existing Site
-
-The source/initial case payloads are available locally. Existing production review records are not automatically moved by this port. Export coordinator **Complete JSON** and plan an explicit identity/review migration if those records need to be transferred. Do not reuse original Site user bindings as Supabase auth identities.
+The existing private Site is unchanged. Historical production reviews are not automatically copied. Export its Complete JSON and plan an explicit migration if those records need to move. Do not treat old authentication bindings as Supabase identities.
 
 ## Primary documentation
 
 - [GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/creating-a-github-pages-site)
-- [Custom Pages workflows](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages)
-- [Supabase authenticated Edge Functions](https://supabase.com/docs/guides/functions/auth)
-- [Supabase getUser verification](https://supabase.com/docs/reference/javascript/auth-getuser)
+- [Supabase Edge Functions](https://supabase.com/docs/guides/functions/auth)
 - [Public and secret keys](https://supabase.com/docs/guides/getting-started/api-keys)
-- [Production email sender](https://supabase.com/docs/guides/auth/auth-smtp)

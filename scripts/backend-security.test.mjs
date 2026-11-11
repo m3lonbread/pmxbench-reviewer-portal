@@ -3,11 +3,13 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {PGlite} from '@electric-sql/pglite';
 import {normalizeQuotes,validateRatingPatch,requireCoordinator,requireWrite} from '../backend/supabase/functions/pmxbench/domain.ts';
+import {assertReviewerRoute,publicReviewer} from '../backend/supabase/functions/pmxbench/picker.ts';
 test('PostgreSQL keeps private data inaccessible and applies review changes atomically',async t=>{
  const pg=new PGlite();
  try{
   await pg.exec('create role anon;create role authenticated;create role service_role bypassrls;create schema auth;create table auth.users(id uuid primary key);');
   await pg.exec(await readFile(new URL('../backend/supabase/migrations/202611100001_review_portal.sql',import.meta.url),'utf8'));
+  await pg.exec(await readFile(new URL('../backend/supabase/migrations/202611100002_name_selection.sql',import.meta.url),'utf8'));
   for(const id of ['case1','case2','case3'])await pg.query('insert into pmx_cases(id,meta,packet) values($1,$2::jsonb,$3::jsonb)',[id,JSON.stringify({id}),JSON.stringify({id,prompt:'private prompt'})]);
   async function as(role,run){await pg.exec('set role '+role);try{return await run();}finally{await pg.exec('reset role');}}
   await t.test('anonymous and authenticated clients cannot read private tables or invoke privileged RPCs',async()=>{
@@ -22,6 +24,15 @@ test('PostgreSQL keeps private data inaccessible and applies review changes atom
     assert.equal((await pg.query('select count(*)::int n from pmx_assignments where reviewer_id=$1',[id])).rows[0].n,1);
     await pg.query('select pmx_save_expert($1,$2::jsonb,$3)',[id,JSON.stringify({status:'verified',caseIds:['case1','case2']}),'coordinator@example.test']);
     assert.equal((await pg.query('select count(*)::int n from pmx_assignments where reviewer_id=$1',[id])).rows[0].n,2);
+   });
+  });
+  await t.test('name selection starts disabled, and experts can be added without email',async()=>{
+   const setting=(await pg.query("select value from pmx_settings where key='name_selection_enabled'")).rows[0];
+   assert.equal(setting.value,false);
+   await as('service_role',async()=>{
+    const created=await pg.query('select pmx_save_expert(null,$1::jsonb,$2) result',[JSON.stringify({name:'Name-only expert',status:'verified',caseIds:['case1']}),'coordinator@example.test']);
+    const row=(await pg.query('select login_email,email,status from pmx_experts where id=$1',[created.rows[0].result.id])).rows[0];
+    assert.equal(row.login_email,null);assert.equal(row.email,'');assert.equal(row.status,'verified');
    });
   });
   await t.test('granular rating saves merge, missing values clear, and separate reviewers remain separate',async()=>{
@@ -46,4 +57,11 @@ test('source context is verified against the assigned passage, including UTF-16 
  assert.deepEqual(await normalizeQuotes([],[],async()=>{throw Error('General feedback must not infer a source');}),[]);
  assert.throws(()=>requireCoordinator({coordinator:false}),/Coordinator/);assert.throws(()=>requireWrite({preview:true}),/read-only/);
  assert.throws(()=>validateRatingPatch({values:{difficulty:'invented'}}),/Unknown rating/);
+});
+
+test('name selection exposes a minimal directory and cannot reach coordinator or preview routes',()=>{
+ const person={id:'expert1',name:'Synthetic reviewer',affiliation:'Test institution',email:'private@example.test',notes:'Private notes',auth_user_id:'private-auth'};
+ assert.deepEqual(publicReviewer(person,2),{id:'expert1',name:'Synthetic reviewer',affiliation:'Test institution',caseCount:2});
+ for(const [path,method]of [['/api/reviewers','GET'],['/api/session','GET'],['/api/cases/case_1','GET'],['/api/reviews','PATCH'],['/api/comments','POST']])assert.doesNotThrow(()=>assertReviewerRoute(path,method));
+ for(const [path,method]of [['/api/admin/reviewers','GET'],['/api/admin/results','GET'],['/api/admin/assignments/expert1','PUT'],['/api/session?preview=reviewer-demo','GET'],['/api/reviewers','POST'],['https://evil.invalid/api/session','GET'],['/api/cases/../admin/results','GET']])assert.throws(()=>assertReviewerRoute(path,method),/not available/);
 });

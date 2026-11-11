@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env*
+!.env.example
+backend/private/
+*.tsbuildinfo
+.DS_Store
+backend/supabase/.temp/
+backend/supabase/.branches/
+*.pem
+*.key

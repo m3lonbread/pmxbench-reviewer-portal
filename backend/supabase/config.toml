@@ -1,0 +1,3 @@
+project_id = "pmxbench-review-backend"
+[functions.pmxbench]
+verify_jwt = true

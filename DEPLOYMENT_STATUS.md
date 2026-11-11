@@ -51,3 +51,12 @@ Tracker response synchronization, 10 November 2026:
 - Read the response CSV at its real header row (row 9) using its Windows-1252 encoding. Detailed responses were used rather than the stale summary counters. Private data, source links, matching rationales, and the pre-change roster snapshot stay in ignored backend/private/.
 - Archived five declined profiles from the current roster, prepared 36 draft case assignments across 14 profiles, and verified all seven OOO records remained byte-for-byte unchanged in their saved profile timestamps. No review data was deleted.
 - The 10 clearly interested reviewers have two or three cases each (28 assignments); four requesting more information have two tentative draft cases each (8 assignments). Public reviewer activation is a separate final action.
+
+Completed response activation:
+
+- The coordinator approved activation of the 10 explicitly interested reviewers. All 28 assignments are live across 28 distinct cases; eight reviewers have three cases and two have two cases.
+- Five declined profiles remain inactive, four information-requesting profiles retain two draft cases each, and all seven OOO profiles were left untouched. Other blank-response profiles were unchanged.
+- Live API checks matched all 10 reviewer sessions to their exact planned case IDs, verified the minimal public directory, blocked unassigned cases and coordinator routes, and blocked all four draft identities. Prompt/rubric delivery and absence of staged-file access were verified.
+- Browser checks confirmed the coordinator totals (61 current profiles, 10 activated, 14 with plans, 28/53 cases active) and a three-case reviewer view without assignment controls. No review submissions or invitations were created.
+- Both Edge Functions were updated, and Pages deployment 42961265688 for commit a50c70c passed all 11 checks, backend type-check, frontend build, and the static privacy audit.
+- Matching is a coordinator inference from the tracker’s modeling/research fields and linked institutional/conference/publication sources. The rationale is stored per profile. Individual reviewers have not yet confirmed their case preferences. The conditional epidemiology/outcomes-to-QSP match is explicitly marked tentative in the corresponding draft notes.

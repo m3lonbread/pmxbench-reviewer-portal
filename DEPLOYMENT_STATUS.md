@@ -28,7 +28,7 @@ Implemented and checked locally:
 - Eight PostgreSQL/source/configuration checks pass. Frontend build and backend type-check pass.
 - Static artifact privacy audit passes: no case packets, faculty contacts, or server credentials.
 
-Deployment is complete. To begin real reviews, the coordinator assigns one or two cases and marks the corresponding expert Verified; that name then appears in the reviewer picker. No experts were automatically activated or assigned. Coordinator email delivery and an assigned reviewer’s live write flow remain untested; database saves and reviewer separation passed the local PostgreSQL checks. The existing private Site remains unchanged.
+Deployment is complete. To begin real reviews, the coordinator assigns one or two cases and marks the corresponding expert Verified; that name then appears in the reviewer picker. No experts were automatically activated or assigned. Coordinator password sign-in and authorized roster access are verified live. Email-link delivery and an assigned reviewer’s live write flow remain untested; database saves and reviewer separation passed the local PostgreSQL checks. The existing private Site remains unchanged.
 
 Branding and coordinator update, 10 November 2026:
 
@@ -42,4 +42,5 @@ Coordinator password sign-in, 10 November 2026:
 - Added password sign-in as the default coordinator method, with email links retained as an optional fallback for existing accounts.
 - Password attempts never send email automatically. Email limit errors now explain the restriction and pause repeated requests. Passwords stay in the password field’s memory until submission and are not written to app storage, source, logs, or exports. Supabase manages credential verification and session storage.
 - Ten local checks pass, including password/email dispatch separation and email quota handling; frontend build and static privacy audit pass.
-- The owner reports setting their coordinator password through Supabase. Hosted sign-in verification is pending deployment.
+- The owner set their coordinator password privately through Supabase and successfully signed into the deployed portal. Browser verification confirmed the coordinator workspace and all 66 preliminary profiles loaded.
+- Deployment 42958290201 for commit 64fa27c passed all ten checks, backend type-check, frontend build, static audit, and Pages publishing. Email delivery remains optional and subject to the provider quota.

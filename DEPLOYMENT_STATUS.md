@@ -13,10 +13,11 @@ Verified hosting progress:
 - Supabase Free organization PmxBench and project `pmxbench-reviewer-portal` created by the owner in West US (Oregon).
 - Both database migrations applied successfully.
 - All 53 official cases, 1,038 rubric criteria, and 66 Preliminary contacts imported into Supabase. Zero assignments or activated experts.
-- Live API checks pass: direct browser case access denied (401), coordinator requests require verified sign-in (401), disabled reviewer directory returns its preparation message (503).
+- Eight live API checks pass: name directory works without sign-in (200); coordinator results and preview routes rejected by the reviewer service (403); unknown/inactive reviewer access rejected (403); coordinator requires sign-in (401); direct database case access denied (401); unapproved origins blocked (403); browser preflight succeeds (204).
 - Both Edge Functions deployed; Pages origin and coordinator callback URL configured.
 - Public Supabase URL and publishable key set as GitHub repository variables.
-- Public name selection remains disabled pending the owner's acceptance of the concrete access model.
+- Owner explicitly approved name-only access on 10 November 2026. The limited reviewer function's gateway JWT check is off and `name_selection_enabled` is true. The authenticated coordinator function remains protected.
+- Hosted entry screen now shows ‘Reviews are being assigned’ because the approved name directory currently has zero activated reviewers.
 
 Implemented and checked locally:
 
@@ -27,4 +28,4 @@ Implemented and checked locally:
 - Eight PostgreSQL/source/configuration checks pass. Frontend build and backend type-check pass.
 - Static artifact privacy audit passes: no case packets, faculty contacts, or server credentials.
 
-Remaining: obtain acceptance before disabling gateway JWT verification for the limited reviewer function and enabling public name access, then verify the hosted name-selection response. The published site currently shows that reviewer access is being prepared. Coordinator email delivery and an assigned reviewer’s live write flow remain untested; no real experts have been activated or assigned. The existing private Site remains unchanged.
+Deployment is complete. To begin real reviews, the coordinator assigns one or two cases and marks the corresponding expert Verified; that name then appears in the reviewer picker. No experts were automatically activated or assigned. Coordinator email delivery and an assigned reviewer’s live write flow remain untested; database saves and reviewer separation passed the local PostgreSQL checks. The existing private Site remains unchanged.

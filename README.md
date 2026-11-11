@@ -4,7 +4,7 @@ Reviewers open the GitHub Pages site, select their name, and review their assign
 
 **Site:** https://m3lonbread.github.io/pmxbench-reviewer-portal/
 
-The site is published with a Supabase Free backend. Name-only access is awaiting owner acceptance of the access model below. See [deployment status](DEPLOYMENT_STATUS.md) for verified progress.
+The site is live with a Supabase Free backend and owner-approved name-only reviewer access. The coordinator must activate assignments before names appear. See [deployment status](DEPLOYMENT_STATUS.md) for verification and current readiness.
 
 ## Access model
 

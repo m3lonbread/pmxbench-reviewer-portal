@@ -12,7 +12,7 @@ Name selection is self-reported identity. Anyone with the portal link can choose
 
 The picker lists only Verified reviewers with assigned cases. Preliminary and Inactive profiles stay out of the picker. Its public directory includes only ID, name, affiliation, and assigned-case count. Contact emails, coordinator notes, the complete roster, assignment editing, and aggregate exports remain coordinator-only.
 
-Each reviewer receives one or two cases. Complete prompts and grading rubrics are included, with materials descriptions only. Staged files and summary cards are not provided. Quotations retain their exact case, subsection, passage, and source revision. General comments and six categorical ratings are supported.
+Reviewers can receive up to three cases; the current matching plan targets two or three per interested expert. Complete prompts and grading rubrics are included, with materials descriptions only. Staged files and summary cards are not provided. Quotations retain their exact case, subsection, passage, and source revision. General comments and six categorical ratings are supported.
 
 The name-selection service accepts only directory, session, assigned-case, rating, and comment requests. It rejects coordinator endpoints and all preview parameters. Every selected profile must remain Verified and assigned before data is returned or saved. Direct database access is denied to browser clients, including the public key.
 
@@ -28,6 +28,7 @@ Create a Supabase Free project owned by the host. Apply the SQL migrations in fi
 
 1. `backend/supabase/migrations/202611100001_review_portal.sql`
 2. `backend/supabase/migrations/202611100002_name_selection.sql`
+3. `backend/supabase/migrations/202611100003_three_case_assignments.sql`
 
 Prepare private initial data locally:
 
@@ -69,7 +70,7 @@ Coordinator sign-in is separate from reviewer name selection. The backend still 
 
 The built-in sender currently allows only two emails per hour across a project and only reaches project-team addresses. Password sign-in avoids that email dependency. The email fallback uses a 60-second resend pause after success and an hour-long pause when the sender reports its email quota. These UI pauses do not alter Supabase’s limits. Password failures never trigger a sign-in email automatically. Reviewer name selection requires no email sender. Do not disable email confirmation globally to work around an email quota.
 
-After sign-in, confirm expert details, choose one or two cases, and set the profile to Verified to list it in the picker. Contact email is optional and does not control reviewer access. No real experts are automatically activated or assigned by the seed.
+After sign-in, confirm expert details, choose up to three cases, and set the profile to Verified to list it in the picker. Contact email is optional and does not control reviewer access. No real experts are automatically activated or assigned by the seed.
 
 ## GitHub Pages deployment
 

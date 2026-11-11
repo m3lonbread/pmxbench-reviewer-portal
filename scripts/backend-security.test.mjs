@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {PGlite} from '@electric-sql/pglite';
-import {normalizeQuotes,validateRatingPatch,requireCoordinator,requireWrite} from '../backend/supabase/functions/pmxbench/domain.ts';
+import {normalizeQuotes,validateRatingPatch,requireCoordinator,requireWrite,assertCases} from '../backend/supabase/functions/pmxbench/domain.ts';
 import {assertReviewerRoute,publicReviewer} from '../backend/supabase/functions/pmxbench/picker.ts';
 test('PostgreSQL keeps private data inaccessible and applies review changes atomically',async t=>{
  const pg=new PGlite();
@@ -10,20 +10,21 @@ test('PostgreSQL keeps private data inaccessible and applies review changes atom
   await pg.exec('create role anon;create role authenticated;create role service_role bypassrls;create schema auth;create table auth.users(id uuid primary key);');
   await pg.exec(await readFile(new URL('../backend/supabase/migrations/202611100001_review_portal.sql',import.meta.url),'utf8'));
   await pg.exec(await readFile(new URL('../backend/supabase/migrations/202611100002_name_selection.sql',import.meta.url),'utf8'));
-  for(const id of ['case1','case2','case3'])await pg.query('insert into pmx_cases(id,meta,packet) values($1,$2::jsonb,$3::jsonb)',[id,JSON.stringify({id}),JSON.stringify({id,prompt:'private prompt'})]);
+  await pg.exec(await readFile(new URL('../backend/supabase/migrations/202611100003_three_case_assignments.sql',import.meta.url),'utf8'));
+  for(const id of ['case1','case2','case3','case4'])await pg.query('insert into pmx_cases(id,meta,packet) values($1,$2::jsonb,$3::jsonb)',[id,JSON.stringify({id}),JSON.stringify({id,prompt:'private prompt'})]);
   async function as(role,run){await pg.exec('set role '+role);try{return await run();}finally{await pg.exec('reset role');}}
   await t.test('anonymous and authenticated clients cannot read private tables or invoke privileged RPCs',async()=>{
    for(const role of ['anon','authenticated'])await as(role,async()=>{for(const table of ['pmx_cases','pmx_experts','pmx_reviews','pmx_comments','pmx_assignments','pmx_settings'])await assert.rejects(pg.query('select * from '+table),/permission denied/);await assert.rejects(pg.query("select pmx_write_review('victim','case1','{}',true,'rev')"),/permission denied/);await assert.rejects(pg.query("select pmx_save_expert(null,'{}','attacker')"),/permission denied/);});
   });
-  await t.test('one/two-case plans work; invalid case selections cannot partially activate an expert',async()=>{
+  await t.test('one-to-three-case plans work; invalid case selections cannot partially activate an expert',async()=>{
    await as('service_role',async()=>{
     const created=await pg.query('select pmx_save_expert(null,$1::jsonb,$2) result',[JSON.stringify({name:'Synthetic expert',loginEmail:'expert@example.test',caseIds:['case1']}),'coordinator@example.test']);
     const id=created.rows[0].result.id;
-    await assert.rejects(pg.query('select pmx_save_expert($1,$2::jsonb,$3)',[id,JSON.stringify({status:'verified',caseIds:['case1','case2','case3']}),'coordinator@example.test']),/two different cases/);
+    await assert.rejects(pg.query('select pmx_save_expert($1,$2::jsonb,$3)',[id,JSON.stringify({status:'verified',caseIds:['case1','case2','case3','case4']}),'coordinator@example.test']),/three different cases/);
     let row=(await pg.query('select status from pmx_experts where id=$1',[id])).rows[0];assert.equal(row.status,'preliminary');
     assert.equal((await pg.query('select count(*)::int n from pmx_assignments where reviewer_id=$1',[id])).rows[0].n,1);
-    await pg.query('select pmx_save_expert($1,$2::jsonb,$3)',[id,JSON.stringify({status:'verified',caseIds:['case1','case2']}),'coordinator@example.test']);
-    assert.equal((await pg.query('select count(*)::int n from pmx_assignments where reviewer_id=$1',[id])).rows[0].n,2);
+    await pg.query('select pmx_save_expert($1,$2::jsonb,$3)',[id,JSON.stringify({status:'verified',caseIds:['case1','case2','case3']}),'coordinator@example.test']);
+    assert.equal((await pg.query('select count(*)::int n from pmx_assignments where reviewer_id=$1',[id])).rows[0].n,3);
    });
   });
   await t.test('name selection starts disabled, and experts can be added without email',async()=>{
@@ -64,4 +65,10 @@ test('name selection exposes a minimal directory and cannot reach coordinator or
  assert.deepEqual(publicReviewer(person,2),{id:'expert1',name:'Synthetic reviewer',affiliation:'Test institution',caseCount:2});
  for(const [path,method]of [['/api/reviewers','GET'],['/api/session','GET'],['/api/cases/case_1','GET'],['/api/reviews','PATCH'],['/api/comments','POST']])assert.doesNotThrow(()=>assertReviewerRoute(path,method));
  for(const [path,method]of [['/api/admin/reviewers','GET'],['/api/admin/results','GET'],['/api/admin/assignments/expert1','PUT'],['/api/session?preview=reviewer-demo','GET'],['/api/reviewers','POST'],['https://evil.invalid/api/session','GET'],['/api/cases/../admin/results','GET']])assert.throws(()=>assertReviewerRoute(path,method),/not available/);
+});
+
+test('assignment validation allows three cases, rejects four and duplicate IDs',()=>{
+ assert.deepEqual(assertCases(['a','b','c']),['a','b','c']);
+ assert.throws(()=>assertCases(['a','b','c','d']),/three different cases/);
+ assert.throws(()=>assertCases(['a','a']),/three different cases/);
 });

@@ -44,3 +44,10 @@ Coordinator password sign-in, 10 November 2026:
 - Ten local checks pass, including password/email dispatch separation and email quota handling; frontend build and static privacy audit pass.
 - The owner set their coordinator password privately through Supabase and successfully signed into the deployed portal. Browser verification confirmed the coordinator workspace and all 66 preliminary profiles loaded.
 - Deployment 42958290201 for commit 64fa27c passed all ten checks, backend type-check, frontend build, static audit, and Pages publishing. Email delivery remains optional and subject to the provider quota.
+
+Tracker response synchronization, 10 November 2026:
+
+- Extended assignment limits to three cases in the coordinator UI, server validation, and atomic database helper. Migration 202611100003 was applied. Eleven checks pass, including allowing three assignments and rolling back a four-case attempt.
+- Read the response CSV at its real header row (row 9) using its Windows-1252 encoding. Detailed responses were used rather than the stale summary counters. Private data, source links, matching rationales, and the pre-change roster snapshot stay in ignored backend/private/.
+- Archived five declined profiles from the current roster, prepared 36 draft case assignments across 14 profiles, and verified all seven OOO records remained byte-for-byte unchanged in their saved profile timestamps. No review data was deleted.
+- The 10 clearly interested reviewers have two or three cases each (28 assignments); four requesting more information have two tentative draft cases each (8 assignments). Public reviewer activation is a separate final action.

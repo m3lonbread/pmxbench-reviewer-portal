@@ -30,7 +30,7 @@
 @media(max-width:700px){.roster-toolbar{flex-wrap:wrap}.roster-toolbar>span{width:100%;margin-left:0}.assignment-stats{gap:14px}.assignment-stats>span{flex:1 1 40%}.assignment-save-actions{flex-wrap:wrap}.assignment-save-actions>span{width:100%}.assignment-person-heading{flex-wrap:wrap}.assignment-contact{overflow-wrap:anywhere}}
 .auth-form{display:flex;flex-direction:column;gap:12px;width:min(360px,100%);text-align:left;margin:20px 0}.auth-form label{font-size:12px;font-weight:550}.auth-form input{padding:12px;border:1px solid var(--border);border-radius:7px;min-width:0;width:100%;color:var(--ink);background:#fff}.auth-form input:focus{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-light)}
 
-/* A name picker is the default reviewer entry; coordinator sign-in is separate. */
+/* Typed reviewer details are the default entry; coordinator sign-in is separate. */
 .reviewer-entry{background:radial-gradient(ellipse at 15% 10%,#e9f3f2 0,transparent 50%),#fafdfc;}
 .entry-card{width:min(520px,100%);text-align:left;background:#fff;border:1px solid #e0efee;border-radius:20px;padding:42px;box-shadow:0 20px 70px #60807e0b;}
 .entry-card>.brand-mark{display:flex;align-items:center;justify-content:center;margin-bottom:28px;}
@@ -77,3 +77,8 @@ button:focus-visible,a:focus-visible{outline-color:#42867d;}
 .coordinator-entry .auth-error{display:block;background:#fff6ec;border:1px solid #ebd9c1;padding:12px 16px;border-radius:8px;color:#795936;max-width:460px;text-align:left;}
 
 .test-case-note{margin:14px 0;padding:10px 13px;border:1px solid #b7d8cf;border-radius:7px;background:#edf7f3;color:#2e655c;font-size:11px;line-height:1.7;}
+
+.entry-card .auth-form>p[role=alert]{display:block;font-size:12px;line-height:1.6;margin:0;}
+
+.entry-card{padding:34px;}.entry-card>.brand-mark{margin-bottom:22px;}.entry-card h1{font-size:30px;line-height:1.22;}.entry-card .auth-form{margin:24px 0;gap:10px;}
+@media(max-width:600px){.entry-card{padding:28px 24px;}.entry-card h1{font-size:28px;}}

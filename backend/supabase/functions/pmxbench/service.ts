@@ -1,6 +1,6 @@
 import {createClient} from '@supabase/supabase-js';
 import {benchmarkResults} from './results.ts';
-import {assertReviewerRoute,publicReviewer} from './picker.ts';
+import {assertReviewerRoute,assertReviewerMatch,hashReviewerValue,newReviewerToken,reviewerAccessError,reviewerCredentials} from './picker.ts';
 import {ApiError,assertCases,assertProfile,normalizeQuotes,requireCoordinator,requireWrite,validateRatingPatch} from './domain.ts';
 const origin=Deno.env.get('PMXBENCH_FRONTEND_ORIGIN')??'';
 const secrets=JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS')??'{}');
@@ -95,17 +95,31 @@ export function portalHandler(mode:'authenticated'|'name-picker'){return async(r
   if(typeof input.path!=='string'||input.path.length>2000||!['GET','POST','PUT','PATCH'].includes(input.method))throw new ApiError(400,'Invalid request.');
   let a:Actor;
   if(mode==='name-picker'){
-   const setting=await query(db.from('pmx_settings').select('value').eq('key','name_selection_enabled').maybeSingle());
+   const setting=await query(db.from('pmx_settings').select('value').eq('key','reviewer_access_enabled').maybeSingle());
    if(setting?.value!==true)throw new ApiError(503,'Reviewer access is being prepared. Please check back with the coordinator.');
    assertReviewerRoute(input.path,input.method);
-   if(input.path==='/api/reviewers'){
-    const [people,allocations]=await Promise.all([collect(()=>db.from('pmx_experts').select('id,name,affiliation,status').eq('status','verified').order('name').order('id')),collect(()=>db.from('pmx_assignments').select('reviewer_id').order('reviewer_id').order('case_id'))]);
-    return reply({reviewers:people.flatMap((p:any)=>{const count=allocations.filter((r:any)=>r.reviewer_id===p.id).length;return count?[publicReviewer(p,count)]:[];})});
+   if(input.path==='/api/reviewer-access'){
+    const credentials=reviewerCredentials(input.payload);
+    const allowed=await query(db.rpc('pmx_reserve_reviewer_attempt',{p_bucket:await hashReviewerValue('email:'+credentials.email)}));
+    if(!allowed)throw new ApiError(429,'Too many attempts for these details. Try again in 15 minutes.');
+    const person=await query(db.from('pmx_experts').select('id,name,status,login_email').eq('login_email',credentials.email).maybeSingle());
+    assertReviewerMatch(person,credentials);
+    if(!(await assigned(person.id)).length)throw new ApiError(403,reviewerAccessError);
+    const token=newReviewerToken(),expiresAt=new Date(Date.now()+8*60*60*1000).toISOString();
+    await query(db.from('pmx_reviewer_sessions').insert({token_hash:await hashReviewerValue(token),reviewer_id:person.id,matched_email:credentials.email,expires_at:expiresAt}));
+    return reply({reviewerId:person.id,token,expiresAt});
    }
-   if(typeof input.reviewerId!=='string'||input.reviewerId.length>150)throw new ApiError(400,'Choose your name to open your assigned cases.');
-   const person=await query(db.from('pmx_experts').select('id,name,status').eq('id',input.reviewerId).maybeSingle());
-   if(!person||person.status!=='verified'||!(await assigned(person.id)).length)throw new ApiError(403,'Your review is not active. Please select your name again or contact the coordinator.');
-   a={userId:`selected:${person.id}`,email:'',name:person.name,coordinator:false,reviewerId:person.id,identityMethod:'self_selected_name'};
+   if(typeof input.reviewerToken!=='string'||!/^[a-f0-9]{64}$/.test(input.reviewerToken))throw new ApiError(401,'Enter your name and email to open your review.');
+   const tokenHash=await hashReviewerValue(input.reviewerToken);
+   if(input.path==='/api/reviewer-logout'){
+    await query(db.from('pmx_reviewer_sessions').update({revoked_at:new Date().toISOString()}).eq('token_hash',tokenHash));return reply({signedOut:true});
+   }
+   const access=await query(db.from('pmx_reviewer_sessions').select('reviewer_id,matched_email,expires_at,revoked_at').eq('token_hash',tokenHash).maybeSingle());
+   if(!access||access.revoked_at||Date.parse(access.expires_at)<=Date.now())throw new ApiError(401,'Your review session ended. Enter your name and email again.');
+   const person=await query(db.from('pmx_experts').select('id,name,status,login_email').eq('id',access.reviewer_id).maybeSingle());
+   if(!person||person.status!=='verified'||person.login_email?.toLowerCase()!==access.matched_email||!(await assigned(person.id)).length)throw new ApiError(401,'Your review session ended. Enter your name and email again.');
+   if(input.reviewerId!==undefined&&input.reviewerId!==person.id)throw new ApiError(403,'This action is not available to reviewers.');
+   a={userId:`selected:${person.id}`,email:person.login_email,name:person.name,coordinator:false,reviewerId:person.id,identityMethod:'name_email_match'};
   }else{
    const token=request.headers.get('Authorization')?.match(/^Bearer (.+)$/i)?.[1];
    if(!token)throw new ApiError(401,'Sign in to access the coordinator workspace.');

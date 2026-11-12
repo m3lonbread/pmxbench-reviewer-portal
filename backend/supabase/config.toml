@@ -2,7 +2,7 @@ project_id = "pmxbench-review-backend"
 [functions.pmxbench]
 verify_jwt = true
 
-# Public name selection uses a deliberately limited handler.
+# Reviewer name/email matching uses a limited handler with private session tokens.
 # Coordinator endpoints remain in the authenticated function above.
 [functions.pmxbench-reviewer]
 verify_jwt = false

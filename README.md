@@ -1,26 +1,26 @@
 # PmxBench reviewer portal
 
-Reviewers open the GitHub Pages site, select their name, and review their assigned cases. No reviewer account, email sign-in, or email service is required. Supabase stores case packets, assignments, ratings, and source-linked comments. The coordinator uses a separate authenticated workspace to manage assignments and export results.
+Reviewers open the GitHub Pages site, type their full name and recorded reply email, and review their assigned cases. No email link, code, email sender, or reviewer password is required. Supabase stores case packets, assignments, ratings, and source-linked comments. The coordinator uses a separate authenticated workspace to manage assignments and export results.
 
 **Site:** https://m3lonbread.github.io/pmxbench-reviewer-portal/
 
-The site is live with a Supabase Free backend and owner-approved name-only reviewer access. The coordinator must activate assignments before names appear. See [deployment status](DEPLOYMENT_STATUS.md) for verification and current readiness.
+The site is live with a Supabase Free backend and owner-approved name-and-email matching. The coordinator must activate a profile, record its reply email, and assign cases before reviewer access works. See [deployment status](DEPLOYMENT_STATUS.md) for verification and current readiness.
 
 ## Access model
 
-Name selection is self-reported identity. Anyone with the portal link can choose any activated reviewer, access that reviewer's assigned cases and saved answers, and submit under that name. The portal is suitable only when that trust model is acceptable. Submitted reviews record `self_selected_name` in their identity metadata. Selecting a name does not verify the person.
+Reviewers type their name and reply email; the server matches both against a private Verified profile with assigned cases. This checks knowledge of recorded details, not ownership of the email address. Anyone who knows a valid name/email pair could impersonate that reviewer. Use verified sign-in if that trust model is insufficient. New feedback records `name_email_match`; historical identity metadata is preserved.
 
-The picker lists only Verified reviewers with assigned cases. Preliminary and Inactive profiles stay out of the picker. Its public directory includes only ID, name, affiliation, and assigned-case count. Contact emails, coordinator notes, the complete roster, assignment editing, and aggregate exports remain coordinator-only.
+There is no public reviewer directory or email list. Old reviewer IDs alone cannot open a review. The server issues a random eight-hour session token after a successful match, stores only its SHA-256 hash, and keeps the browser token in sessionStorage. Email addresses are not saved in browser identity storage. Each request rechecks profile activation, current email, and assignments. Sign-out revokes the token; expiration, an email change, or deactivation invalidates access. Matching attempts are limited to ten per normalized email in fifteen minutes; no attempt log stores the email itself.
 
 Reviewers can receive up to three cases; the current matching plan targets two or three per interested expert. Complete prompts and grading rubrics are included, with materials descriptions only. Staged files and summary cards are not provided. Quotations retain their exact case, subsection, passage, and source revision. General comments and six categorical ratings are supported.
 
-The name-selection service accepts only directory, session, assigned-case, rating, and comment requests. It rejects coordinator endpoints and all preview parameters. Every selected profile must remain Verified and assigned before data is returned or saved. Direct database access is denied to browser clients, including the public key.
+The reviewer service accepts only access, logout, session, assigned-case, rating, and comment requests. It rejects coordinator endpoints and all preview parameters. Every matched profile must remain Verified and assigned before data is returned or saved. Direct database access is denied to browser clients, including the public key.
 
 ## Private initial data
 
 `backend/private/` is ignored by Git and excluded from the Pages build. It contains the 53 official case packets and optional preliminary contact payload. Case packets, contacts, submissions, and backend keys must never be committed or placed in frontend imports, `public/`, or `VITE_*` values.
 
-The application tables enable row-level security and deny direct anonymous/authenticated table access. The server checks case assignments and authoritative quote text before using its server-only database client. This protects coordinator data and request scope; it does not turn name selection into identity authentication.
+The application tables enable row-level security and deny direct anonymous/authenticated table access. The server checks case assignments and authoritative quote text before using its server-only database client. This protects coordinator data and request scope; matching a public email is still not verified identity authentication.
 
 ## Backend setup
 
@@ -29,6 +29,7 @@ Create a Supabase Free project owned by the host. Apply the SQL migrations in fi
 1. `backend/supabase/migrations/202611100001_review_portal.sql`
 2. `backend/supabase/migrations/202611100002_name_selection.sql`
 3. `backend/supabase/migrations/202611100003_three_case_assignments.sql`
+4. `backend/supabase/migrations/202611120004_reviewer_email_access.sql`
 
 Prepare private initial data locally:
 
@@ -48,29 +49,29 @@ supabase functions deploy pmxbench-reviewer
 supabase secrets set PMXBENCH_FRONTEND_ORIGIN=https://YOUR_GITHUB_ACCOUNT.github.io
 ```
 
-The config keeps JWT verification enabled for `pmxbench` (coordinator) and disabled for `pmxbench-reviewer` (the limited public name-selection handler). The coordinator handler also validates the user through Supabase Auth and checks the private coordinator allowlist. Never expose a service-role or secret key to the frontend or GitHub variables.
+The config keeps JWT verification enabled for `pmxbench` (coordinator) and disabled for `pmxbench-reviewer` (the limited reviewer-access handler). The coordinator handler also validates the user through Supabase Auth and checks the private coordinator allowlist. Never expose a service-role or secret key to the frontend or GitHub variables.
 
 For dashboard deployment, `node scripts/bundle-dashboard.mjs` produces single-file equivalents in ignored `backend/.deploy/`. Paste each bundle into the Supabase function editor using its matching function name. Check the JWT verification setting for each function against `backend/supabase/config.toml`.
 
-Name selection starts disabled. After the owner accepts the access model above, enable it with:
+Reviewer access starts disabled on a fresh installation. Migration 004 transfers the existing enabled setting when upgrading and disables the legacy name-only flag. After the owner accepts the access model above, enable it with:
 
 ```sql
-update public.pmx_settings set value='true'::jsonb where key='name_selection_enabled';
+update public.pmx_settings set value='true'::jsonb where key='reviewer_access_enabled';
 ```
 
-Disable it with the same statement using `false`. This stops public directory, case, and review access without deleting saved data.
+Disable it with the same statement using `false`. This stops reviewer case and review access without deleting saved data.
 
 ## Coordinator access
 
 Open the portal with `?coordinator=1`. **Password** is the default coordinator sign-in method and does not send an email. The owner creates the coordinator account and its password through Supabase Authentication → Users, using the email in the private coordinator allowlist. Use a password for this portal; it may differ from the host’s GitHub or Supabase dashboard credentials.
 
-Coordinator sign-in is separate from reviewer name selection. The backend still requires a confirmed account and checks the private coordinator allowlist for every request. Do not enable public coordinator signup or expose a backend key to provision accounts. The owner must enter, save, and submit their own password.
+Coordinator sign-in is separate from reviewer name-and-email access. The backend still requires a confirmed account and checks the private coordinator allowlist for every request. Do not enable public coordinator signup or expose a backend key to provision accounts. The owner must enter, save, and submit their own password.
 
 **Email link** is an optional fallback for an existing account. Set Supabase’s Site URL and redirect allowlist to the exact Pages URL and to that URL with `?coordinator=1`.
 
-The built-in sender currently allows only two emails per hour across a project and only reaches project-team addresses. Password sign-in avoids that email dependency. The email fallback uses a 60-second resend pause after success and an hour-long pause when the sender reports its email quota. These UI pauses do not alter Supabase’s limits. Password failures never trigger a sign-in email automatically. Reviewer name selection requires no email sender. Do not disable email confirmation globally to work around an email quota.
+The built-in sender currently allows only two emails per hour across a project and only reaches project-team addresses. Password sign-in avoids that email dependency. The email fallback uses a 60-second resend pause after success and an hour-long pause when the sender reports its email quota. These UI pauses do not alter Supabase’s limits. Password failures never trigger a sign-in email automatically. Reviewer name-and-email access requires no email sender. Do not disable email confirmation globally to work around an email quota.
 
-After sign-in, confirm expert details, choose up to three cases, and set the profile to Verified to list it in the picker. Contact email is optional and does not control reviewer access. No real experts are automatically activated or assigned by the seed.
+After sign-in, confirm expert details, choose up to three cases, and set the profile to Verified to enable access. The recorded reviewer email is required for access and should match the address used in their reply. A preliminary profile may omit it until confirmed. No real experts are automatically activated or assigned by the seed.
 
 ## GitHub Pages deployment
 
@@ -106,3 +107,7 @@ The existing private Site is unchanged. Historical production reviews are not au
 - [GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/creating-a-github-pages-site)
 - [Supabase Edge Functions](https://supabase.com/docs/guides/functions/auth)
 - [Public and secret keys](https://supabase.com/docs/guides/getting-started/api-keys)
+
+## Website tests
+
+Test profiles use `source: Website test fixture`. Test packets use `isTest: true`; copies of real packets also record their source case/revision. Test feedback is available in that reviewer’s workspace and individual export, but excluded from coordinator benchmark CSV/JSON exports and benchmark totals. Copies retain complete official scientific text and descriptions without staged files. Keep fixture SQL, contact addresses, and copied packets in ignored `backend/private/`.

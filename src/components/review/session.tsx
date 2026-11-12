@@ -4,7 +4,7 @@ import type {CaseRating,ReviewCase} from '../../app/review-data';
 import type {Source} from './content';
 export type Feedback={id:string;text:string;quotes:Source[];createdAt:string;reviewer:string;identityMethod?:string};
 export type ReviewState={ratings:Record<string,CaseRating>;reviewed:string[];feedback:Feedback[]};
-export type ReviewSession={user:{id:string;name:string;email:string};role:'coordinator'|'reviewer'|'preview';reviewerId:string;identityMethod:'verified_email'|'self_selected_name';readOnly:boolean;samplePreview:boolean;reviewerStatus:'preliminary'|'verified'|'inactive';cases:ReviewCase[];review:ReviewState};
+export type ReviewSession={user:{id:string;name:string;email:string};role:'coordinator'|'reviewer'|'preview';reviewerId:string;identityMethod:'verified_email'|'self_selected_name'|'name_email_match';readOnly:boolean;samplePreview:boolean;reviewerStatus:'preliminary'|'verified'|'inactive';cases:ReviewCase[];review:ReviewState};
 export {api as fetchJson} from '../../lib/api';
 import {api as fetchJson} from '../../lib/api';
 type Patch={caseId:string;ratingPatch?:Record<string,unknown>;reviewed?:boolean};

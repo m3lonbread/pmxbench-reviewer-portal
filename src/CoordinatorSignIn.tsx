@@ -41,5 +41,5 @@ export function CoordinatorSignIn(){
   {sent&&<p role="status">Check your inbox and spam folder for the sign-in link. Open it in this browser.</p>}
  </>}
  {error&&<p className="inline-error auth-error" role="alert">{error}</p>}
- <a className="entry-link" href={import.meta.env.BASE_URL}>Back to reviewer name selection</a></div>;
+ <a className="entry-link" href={import.meta.env.BASE_URL}>Back to reviewer access</a></div>;
 }

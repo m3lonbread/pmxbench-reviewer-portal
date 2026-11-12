@@ -67,9 +67,7 @@ Open the portal with `?coordinator=1`. **Password** is the default coordinator s
 
 Coordinator sign-in is separate from reviewer name-and-email access. The backend still requires a confirmed account and checks the private coordinator allowlist for every request. Do not enable public coordinator signup or expose a backend key to provision accounts. The owner must enter, save, and submit their own password.
 
-**Email link** is an optional fallback for an existing account. Set Supabase’s Site URL and redirect allowlist to the exact Pages URL and to that URL with `?coordinator=1`.
-
-The built-in sender currently allows only two emails per hour across a project and only reaches project-team addresses. Password sign-in avoids that email dependency. The email fallback uses a 60-second resend pause after success and an hour-long pause when the sender reports its email quota. These UI pauses do not alter Supabase’s limits. Password failures never trigger a sign-in email automatically. Reviewer name-and-email access requires no email sender. Do not disable email confirmation globally to work around an email quota.
+Coordinator sign-in uses a password only. The portal does not request coordinator sign-in emails. Reviewer name-and-email access also requires no email sender.
 
 After sign-in, confirm expert details, choose up to three cases, and set the profile to Verified to enable access. The recorded reviewer email is required for access and should match the address used in their reply. A preliminary profile may omit it until confirmed. No real experts are automatically activated or assigned by the seed.
 

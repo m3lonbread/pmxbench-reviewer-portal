@@ -89,3 +89,8 @@ Typed reviewer name/email access and real-case test copies, 12 November 2026:
 - Sixteen checks passed, including actual handler enforcement, token binding/revocation/expiry, generic mismatch errors, private table/RPC permissions, and rate-window behavior. Backend type-check, frontend build, and static privacy audit passed. Pages deployment 43293728187 for commit 99f0c62 succeeded.
 - Live verification matched all 13 active benchmark reviewers to their exact prior assignments; confirmed old ID-only and directory access are blocked; verified Sonya’s saved feedback; and opened only Dr. Zhao’s three selected copies. General/quoted comments and six sample ratings were saved only to the test profile and survived reopening. No real reviewer feedback was written. Final snapshots preserved all 66 other profiles, all 54 prior packets, all prior comments/ratings, and all 46 prior assignments.
 - Browser verification confirmed typed entry, successful Dr. Zhao access, three assigned test copies, saved ratings/comments after reload, and explicit exclusion labels. The test workspace is left open for the coordinator.
+
+Password-only coordinator entry, 12 November 2026:
+
+- Removed the Email link tab, OTP dispatch, resend timer, and email-delivery messages from coordinator entry. Coordinator access now uses the existing email/password flow only; reviewer name/email matching and saved data are unchanged.
+- Updated the existing authentication checks and README. All 16 checks, the frontend build, and the static privacy audit pass. Local browser inspection confirms only the email/password form and Sign in control are present.

@@ -76,7 +76,6 @@ button:focus-visible,a:focus-visible{outline-color:#42867d;}
 .coordinator-entry .auth-form{margin:0 0 6px;}
 .coordinator-entry .auth-error{display:block;background:#fff6ec;border:1px solid #ebd9c1;padding:12px 16px;border-radius:8px;color:#795936;max-width:460px;text-align:left;}
 
-.test-case-note{margin:14px 0;padding:10px 13px;border:1px solid #b7d8cf;border-radius:7px;background:#edf7f3;color:#2e655c;font-size:11px;line-height:1.7;}
 
 .entry-card .auth-form>p[role=alert]{display:block;font-size:12px;line-height:1.6;margin:0;}
 

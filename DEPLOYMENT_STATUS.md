@@ -94,3 +94,12 @@ Password-only coordinator entry, 12 November 2026:
 
 - Removed the Email link tab, OTP dispatch, resend timer, and email-delivery messages from coordinator entry. Coordinator access now uses the existing email/password flow only; reviewer name/email matching and saved data are unchanged.
 - Updated the existing authentication checks and README. All 16 checks, the frontend build, and the static privacy audit pass. Local browser inspection confirms only the email/password form and Sign in control are present.
+
+
+Single real-case reviewer workspaces, 13 November 2026:
+
+- Activated the coordinator-requested test profiles for Yaxin Liu and Wei Wang, and updated Sonya Chen. Each has exactly one copied official packet: Atazanavir Oral Absorption, Rheumatoid Arthritis Multitherapy, and Remifentanil Anesthesia PKPD respectively. These differ from Dr. Zhao's assigned copies. Unselected prepared copies remain private and unassigned.
+- Retired Sonya's fictional case 0 from the active catalog and assignments. Removed reviewer-facing test-copy title prefixes, banners, and the TEST navigation filter. Source references use the clean title and matching presentation revision; stored scientific packets and historical quotation records remain intact.
+- Archived Sonya's three earlier dummy-workflow comments using the recoverable archived_at field (migration 202611130005); active workspaces hide archived comments. The old ratings and case packet stay stored. Internal test profile/case markers remain, so all these reviewers' responses continue to be excluded from benchmark totals and exports.
+- All 16 checks and backend type-check pass, including hiding retired packets and archived general feedback. The frontend build and static privacy audit passed; Pages deployment 43497679735 for e375a8d succeeded. Both Supabase functions were updated. Live checks verified exactly one matching real case per reviewer, complete source materials, blocked cross-reviewer/original/coordinator access, and session revocation. No new feedback was submitted during these checks.
+- Private before/after audits preserved all 59 prior packet contents, both prior rating rows, five prior comment contents, 67 unrelated profiles, and all other assignments. Contact addresses, fixture SQL, and snapshots remain excluded from Git and Pages artifacts.

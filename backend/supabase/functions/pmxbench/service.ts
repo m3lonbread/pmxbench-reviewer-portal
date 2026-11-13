@@ -41,7 +41,7 @@ async function state(s:Scope){
  const [reviews,comments]=await Promise.all([collect(()=>db.from('pmx_reviews').select('*').eq('reviewer_id',s.reviewerId).order('case_id')),collect(()=>db.from('pmx_comments').select('*').eq('reviewer_id',s.reviewerId).order('created_at').order('id'))]);
  const ids=s.cases.map((c:any)=>c.id),ratings:Record<string,any>={},reviewed:string[]=[];
  for(const r of reviews){if(!ids.includes(r.case_id))continue;ratings[r.case_id]={values:{},difficultyFeedback:'',improvements:'',recommendation:'',...r.rating,updatedAt:r.updated_at};if(r.reviewed)reviewed.push(r.case_id);}
- return {ratings,reviewed,feedback:comments.filter((c:any)=>!c.quotes.length||c.quotes.every((q:any)=>ids.includes(q.caseId))).map((c:any)=>({id:c.id,text:c.text,quotes:c.quotes,createdAt:c.created_at,reviewer:c.reviewer_name,identityMethod:c.identity_method}))};
+ return {ratings,reviewed,feedback:comments.filter((c:any)=>!c.archived_at&&(!c.quotes.length||c.quotes.every((q:any)=>ids.includes(q.caseId)))).map((c:any)=>({id:c.id,text:c.text,quotes:c.quotes,createdAt:c.created_at,reviewer:c.reviewer_name,identityMethod:c.identity_method}))};
 }
 async function route(a:Actor,path:string,method:string,data:Record<string,any>){
  if(!path.startsWith('/api/'))throw new ApiError(404,'Not found.');

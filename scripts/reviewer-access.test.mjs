@@ -33,7 +33,8 @@ test('the actual reviewer handler requires a server-issued session and keeps it 
    else if(method==='PATCH'){const row=sessions.get(eq('token_hash'));if(row)Object.assign(row,payload);data=null;}
    else data=sessions.get(eq('token_hash'))??null;
   }else if(path==='pmx_cases')data=url.searchParams.get('select')==='packet'?{packet}:[{meta:packet},{meta:{...packet,id:'retired',archived:true}}];
-  else if(!['pmx_reviews','pmx_comments'].includes(path))throw Error('Unexpected database operation: '+path);
+  else if(path==='pmx_comments')data=[{id:'retired-feedback',text:'Earlier feedback',quotes:[],archived_at:'2026-11-13T20:00:00Z'},{id:'active-feedback',text:'Current general feedback',quotes:[],archived_at:null}];
+  else if(path!=='pmx_reviews')throw Error('Unexpected database operation: '+path);
   return new Response(JSON.stringify(data),{status:200,headers:{'Content-Type':'application/json'}});
  };
  try{
@@ -47,6 +48,7 @@ test('the actual reviewer handler requires a server-issued session and keeps it 
   assert.equal(sessions.has(login.data.token),false);
   const auth={reviewerToken:login.data.token,reviewerId:person.id};
   const state=await request('/api/session','GET',auth);assert.equal(state.status,200);assert.equal(state.data.role,'reviewer');assert.equal(state.data.identityMethod,'name_email_match');assert.equal(state.data.cases.length,1);assert.equal(state.data.cases[0].title,'Synthetic packet');assert.equal(state.data.cases[0].revision,'r-review-view-v1');assert.equal((await request('/api/cases/retired','GET',auth)).status,404);
+  assert.deepEqual(state.data.review.feedback.map(c=>c.id),['active-feedback']);
   assert.equal((await request('/api/session','GET',{...auth,reviewerId:'another-reviewer'})).status,403);
   assert.equal((await request('/api/cases/unassigned','GET',auth)).status,404);
   assert.equal((await request('/api/admin/results','GET',auth)).status,403);

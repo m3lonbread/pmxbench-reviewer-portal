@@ -12,6 +12,7 @@ test('PostgreSQL keeps private data inaccessible and applies review changes atom
   await pg.exec(await readFile(new URL('../backend/supabase/migrations/202611100002_name_selection.sql',import.meta.url),'utf8'));
   await pg.exec(await readFile(new URL('../backend/supabase/migrations/202611100003_three_case_assignments.sql',import.meta.url),'utf8'));
   await pg.exec(await readFile(new URL('../backend/supabase/migrations/202611120004_reviewer_email_access.sql',import.meta.url),'utf8'));
+  await pg.exec(await readFile(new URL('../backend/supabase/migrations/202611130005_archive_feedback.sql',import.meta.url),'utf8'));
   for(const id of ['case1','case2','case3','case4'])await pg.query('insert into pmx_cases(id,meta,packet) values($1,$2::jsonb,$3::jsonb)',[id,JSON.stringify({id}),JSON.stringify({id,prompt:'private prompt'})]);
   async function as(role,run){await pg.exec('set role '+role);try{return await run();}finally{await pg.exec('reset role');}}
   await t.test('anonymous and authenticated clients cannot read private tables or invoke privileged RPCs',async()=>{

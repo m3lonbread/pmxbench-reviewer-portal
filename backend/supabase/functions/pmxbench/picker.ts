@@ -7,6 +7,7 @@ export function assertReviewerRoute(path:string,method:string){
  if(url.search||url.hash||url.pathname!==path)throw new ApiError(403,'This action is not available to reviewers.');
  const allowed=(method==='GET'&&['/api/session','/api/reviews'].includes(path))
   ||(method==='GET'&&/^\/api\/cases\/[a-zA-Z0-9_-]+$/.test(path))
+  ||(method==='GET'&&/^\/api\/cases\/[a-zA-Z0-9_-]+\/papers\/[a-f0-9]{32}$/.test(path))
   ||(path==='/api/reviews'&&method==='PATCH')
   ||(method==='POST'&&['/api/reviewer-access','/api/reviewer-logout','/api/comments'].includes(path));
  if(!allowed)throw new ApiError(403,'This action is not available to reviewers.');

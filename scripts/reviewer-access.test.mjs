@@ -16,15 +16,17 @@ test('reviewer tokens are random opaque values and only irreversible hashes are 
 test('the actual reviewer handler requires a server-issued session and keeps it bound to current profile and assignments',async()=>{
  const originalFetch=globalThis.fetch,originalDeno=globalThis.Deno;
  const person={id:'test-reviewer',name:'Synthetic Reviewer',status:'verified',login_email:'reviewer@example.test'};
- const sessions=new Map();let attempts=0;
- const packet={id:'assigned',number:1,title:'Test copy · Synthetic packet',revision:'r',isTest:true,testSourceCaseNumber:1,subtitle:'Overview',prompt:'A source passage',materials:[],rubric:[],sections:[{id:'overview',number:'1.1',title:'Overview'},{id:'prompt',number:'1.2',title:'Prompt'}]};
+ const sessions=new Map();let attempts=0,signCalls=0;
+ const packet={id:'assigned',number:1,title:'Test copy · Synthetic packet',revision:'r',isTest:true,testSourceCaseNumber:1,testSourceCaseId:'official-source',subtitle:'Overview',prompt:'A source passage',materials:[],rubric:[],sections:[{id:'overview',number:'1.1',title:'Overview'},{id:'prompt',number:'1.2',title:'Prompt'}]};
  globalThis.Deno={env:{get:n=>({PMXBENCH_FRONTEND_ORIGIN:'https://portal.example.test',SUPABASE_URL:'https://database.example.test',SUPABASE_SERVICE_ROLE_KEY:'unit-test-service-key'})[n]}};
  globalThis.fetch=async(input,init)=>{
   const url=new URL(typeof input==='string'?input:input.url??String(input)),path=url.pathname.split('/').at(-1),method=init?.method??'GET',payload=init?.body?JSON.parse(init.body):null;
   let data=[];
   const one=url.searchParams.get('select')==='value'||String(init?.headers?.get?.('Accept')??init?.headers?.Accept??'').includes('vnd.pgrst.object');
   const eq=k=>url.searchParams.get(k)?.replace(/^eq\./,'');
-  if(path==='pmx_settings')data={value:true};
+  if(url.pathname.startsWith('/storage/v1/object/sign/pmxbench-literature/')){signCalls++;assert.equal(payload.expiresIn,300);data={signedURL:'/object/sign/pmxbench-literature/'+ 'a'.repeat(64)+'.pdf?token=synthetic'};}
+  else if(path==='pmx_literature'){assert.equal(eq('case_id'),'official-source');data=url.searchParams.get('select')==='object_path'?{object_path:'a'.repeat(64)+'.pdf'}:[{meta:{id:'a'.repeat(32),title:'Source paper',fileName:'source.pdf',bytes:100,pages:1,sha256:'a'.repeat(64)}}];}
+  else if(path==='pmx_settings')data={value:true};
   else if(path==='pmx_reserve_reviewer_attempt')data=++attempts<=10;
   else if(path==='pmx_experts')data=(eq('login_email')===person.login_email||eq('id')===person.id)?{...person}:null;
   else if(path==='pmx_assignments')data=[{case_id:'assigned'},{case_id:'retired'}];
@@ -49,6 +51,12 @@ test('the actual reviewer handler requires a server-issued session and keeps it 
   const auth={reviewerToken:login.data.token,reviewerId:person.id};
   const state=await request('/api/session','GET',auth);assert.equal(state.status,200);assert.equal(state.data.role,'reviewer');assert.equal(state.data.identityMethod,'name_email_match');assert.equal(state.data.cases.length,1);assert.equal(state.data.cases[0].title,'Synthetic packet');assert.equal(state.data.cases[0].revision,'r-review-view-v1');assert.equal((await request('/api/cases/retired','GET',auth)).status,404);
   assert.deepEqual(state.data.review.feedback.map(c=>c.id),['active-feedback']);
+  const paperPath='/api/cases/assigned/papers/'+'a'.repeat(32);
+  assert.equal((await request(paperPath)).status,401);
+  assert.equal((await request('/api/cases/unassigned/papers/'+'a'.repeat(32),'GET',auth)).status,404);
+  assert.equal((await request('/api/cases/assigned/papers/'+'b'.repeat(32),'GET',auth)).status,404);
+  assert.equal(signCalls,0);const paper=await request(paperPath,'GET',auth);assert.equal(paper.status,200);assert.equal(signCalls,2);assert.ok(paper.data.url.startsWith('https://database.example.test/storage/v1/object/sign/pmxbench-literature/'));
+  const content=await request('/api/cases/assigned','GET',auth);assert.equal(content.data.literature.length,1);assert.equal(content.data.sections.at(-1).title,'Source literature');assert.equal(JSON.stringify(content.data).includes('object_path'),false);
   assert.equal((await request('/api/session','GET',{...auth,reviewerId:'another-reviewer'})).status,403);
   assert.equal((await request('/api/cases/unassigned','GET',auth)).status,404);
   assert.equal((await request('/api/admin/results','GET',auth)).status,403);

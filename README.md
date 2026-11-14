@@ -12,9 +12,9 @@ Reviewers type their name and reply email; the server matches both against a pri
 
 There is no public reviewer directory or email list. Old reviewer IDs alone cannot open a review. The server issues a random eight-hour session token after a successful match, stores only its SHA-256 hash, and keeps the browser token in sessionStorage. Email addresses are not saved in browser identity storage. Each request rechecks profile activation, current email, and assignments. Sign-out revokes the token; expiration, an email change, or deactivation invalidates access. Matching attempts are limited to ten per normalized email in fifteen minutes; no attempt log stores the email itself.
 
-Reviewers can receive up to three cases; the current matching plan targets two or three per interested expert. Complete prompts and grading rubrics are included, with materials descriptions only. Staged files and summary cards are not provided. Quotations retain their exact case, subsection, passage, and source revision. General comments and six categorical ratings are supported.
+Reviewers can receive up to three cases; the current matching plan targets two or three per interested expert. Complete prompts and grading rubrics are included, with material descriptions and source-paper PDFs. Datasets, other staged inputs, and summary cards are not provided. Quotations retain their exact case, subsection, passage, and source revision. General comments and six categorical ratings are supported.
 
-The reviewer service accepts only access, logout, session, assigned-case, rating, and comment requests. It rejects coordinator endpoints and all preview parameters. Every matched profile must remain Verified and assigned before data is returned or saved. Direct database access is denied to browser clients, including the public key.
+The reviewer service accepts only access, logout, session, assigned-case, assigned-paper, rating, and comment requests. It rejects coordinator endpoints and all preview parameters. Every matched profile must remain Verified and assigned before data is returned or saved. Direct database access is denied to browser clients, including the public key.
 
 ## Private initial data
 
@@ -30,6 +30,8 @@ Create a Supabase Free project owned by the host. Apply the SQL migrations in fi
 2. `backend/supabase/migrations/202611100002_name_selection.sql`
 3. `backend/supabase/migrations/202611100003_three_case_assignments.sql`
 4. `backend/supabase/migrations/202611120004_reviewer_email_access.sql`
+5. `backend/supabase/migrations/202611130005_archive_feedback.sql`
+6. `backend/supabase/migrations/202611130006_source_literature.sql`
 
 Prepare private initial data locally:
 
@@ -109,3 +111,12 @@ The existing private Site is unchanged. Historical production reviews are not au
 ## Website tests
 
 Test profiles use `source: Website test fixture`. Test packets use `isTest: true`; copies of real packets also record their source case/revision. Test feedback is available in that reviewer’s workspace and individual export, but excluded from coordinator benchmark CSV/JSON exports and benchmark totals. Copies retain complete official scientific text and descriptions without staged files. Reviewer-facing copies use clean case titles and no test-case banners; internal test flags still exclude their responses from benchmark results. Archived packets and comments are hidden from active workspaces while historical feedback stays stored. Apply all SQL migrations, including `202611130005_archive_feedback.sql`, when provisioning a backend. Keep fixture SQL, contact addresses, and copied packets in ignored `backend/private/`.
+
+
+## Source literature
+
+Each case has a Source literature tab and subsection with PDF previews, new-tab reading, and downloads. The original case prompt, rubric, and dataset descriptions remain unchanged. Selecting a paper title can attach that reference to feedback. Text selection inside the browser's PDF viewer does not attach passages automatically; reviewers can comment on the paper via its title reference.
+
+The PDFs and their case catalog are private backend content, never GitHub Pages assets. `pmx_literature` denies direct browser access. The server checks current case assignment before listing papers or issuing five-minute signed read/download links. Test copies resolve to their original case literature without duplicate uploads. The `pmxbench-literature` Storage bucket must stay private, with no public SELECT policies; the server uses its existing service role to sign PDF links.
+
+To provision source literature from the owner-supplied official collection, install `pypdf` in the local Python environment and run `python3 scripts/prepare-literature.py`. It reads only PDFs inside each case's `literature.zip`, validates page counts, deduplicates bytes by SHA-256, and creates ignored `backend/private/literature-seed.sql`, a manifest, and `literature-pdfs/`. Run the seed after the main case seed; upload the flat PDF directory to the private `pmxbench-literature` bucket with `application/pdf` content type. No non-PDF archive entries or datasets are uploaded. Keep all generated data private.

@@ -3,7 +3,8 @@ export type Section = {id:string;number:string;title:string;type:string};
 export type ReviewCase = {isTest?:boolean;testSourceCaseNumber?:number;testSourceCaseId?:string;testSourceRevision?:string;id:string;slug:string;number:number;title:string;track:string;trackCode:string;subtitle:string;revision:string;sourceRoot:string;fileCount:number;criterionCount:number;sections:Section[]};
 export type MaterialDescription={id:string;name:string;description:string;format:string};
 export type RubricBlock = {id:string;text?:string;style?:string;rows?:string[][]};
-export type CaseDetail = ReviewCase & {prompt:string;rubric:RubricBlock[];materials:MaterialDescription[]};
+export type LiteraturePaper={id:string;title:string;fileName:string;bytes:number;pages:number;sha256:string};
+export type CaseDetail = ReviewCase & {prompt:string;rubric:RubricBlock[];materials:MaterialDescription[];literature:LiteraturePaper[]};
 export const packetRevision=version.revision;
 export const ratingFields=[
  {key:'scientificSoundness',label:'Scientific soundness',hint:'Are the scientific assumptions and methods sound?',options:['Adequate','Minor concerns','Major concerns','Unable to assess']},

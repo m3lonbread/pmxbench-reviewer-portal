@@ -13,10 +13,11 @@ test('PostgreSQL keeps private data inaccessible and applies review changes atom
   await pg.exec(await readFile(new URL('../backend/supabase/migrations/202611100003_three_case_assignments.sql',import.meta.url),'utf8'));
   await pg.exec(await readFile(new URL('../backend/supabase/migrations/202611120004_reviewer_email_access.sql',import.meta.url),'utf8'));
   await pg.exec(await readFile(new URL('../backend/supabase/migrations/202611130005_archive_feedback.sql',import.meta.url),'utf8'));
+  await pg.exec(await readFile(new URL('../backend/supabase/migrations/202611130006_source_literature.sql',import.meta.url),'utf8'));
   for(const id of ['case1','case2','case3','case4'])await pg.query('insert into pmx_cases(id,meta,packet) values($1,$2::jsonb,$3::jsonb)',[id,JSON.stringify({id}),JSON.stringify({id,prompt:'private prompt'})]);
   async function as(role,run){await pg.exec('set role '+role);try{return await run();}finally{await pg.exec('reset role');}}
   await t.test('anonymous and authenticated clients cannot read private tables or invoke privileged RPCs',async()=>{
-   for(const role of ['anon','authenticated'])await as(role,async()=>{for(const table of ['pmx_cases','pmx_experts','pmx_reviews','pmx_comments','pmx_assignments','pmx_settings','pmx_reviewer_sessions','pmx_reviewer_access_attempts'])await assert.rejects(pg.query('select * from '+table),/permission denied/);await assert.rejects(pg.query("select pmx_write_review('victim','case1','{}',true,'rev')"),/permission denied/);await assert.rejects(pg.query("select pmx_save_expert(null,'{}','attacker')"),/permission denied/);await assert.rejects(pg.query("select pmx_reserve_reviewer_attempt(repeat('a',64))"),/permission denied/);});
+   for(const role of ['anon','authenticated'])await as(role,async()=>{for(const table of ['pmx_literature','pmx_cases','pmx_experts','pmx_reviews','pmx_comments','pmx_assignments','pmx_settings','pmx_reviewer_sessions','pmx_reviewer_access_attempts'])await assert.rejects(pg.query('select * from '+table),/permission denied/);await assert.rejects(pg.query("select pmx_write_review('victim','case1','{}',true,'rev')"),/permission denied/);await assert.rejects(pg.query("select pmx_save_expert(null,'{}','attacker')"),/permission denied/);await assert.rejects(pg.query("select pmx_reserve_reviewer_attempt(repeat('a',64))"),/permission denied/);});
   });
   await t.test('one-to-three-case plans work; invalid case selections cannot partially activate an expert',async()=>{
    await as('service_role',async()=>{
@@ -71,8 +72,8 @@ test('source context is verified against the assigned passage, including UTF-16 
 });
 
 test('typed reviewer access does not expose a directory or coordinator routes',()=>{
- for(const [path,method]of [['/api/reviewer-access','POST'],['/api/reviewer-logout','POST'],['/api/session','GET'],['/api/cases/case_1','GET'],['/api/reviews','PATCH'],['/api/comments','POST']])assert.doesNotThrow(()=>assertReviewerRoute(path,method));
- for(const [path,method]of [['/api/reviewers','GET'],['/api/admin/reviewers','GET'],['/api/admin/results','GET'],['/api/admin/assignments/expert1','PUT'],['/api/session?preview=reviewer-demo','GET'],['/api/reviewer-access','GET'],['https://evil.invalid/api/session','GET'],['/api/cases/../admin/results','GET']])assert.throws(()=>assertReviewerRoute(path,method),/not available/);
+ for(const [path,method]of [['/api/reviewer-access','POST'],['/api/reviewer-logout','POST'],['/api/session','GET'],['/api/cases/case_1','GET'],['/api/cases/case_1/papers/'+ 'a'.repeat(32),'GET'],['/api/reviews','PATCH'],['/api/comments','POST']])assert.doesNotThrow(()=>assertReviewerRoute(path,method));
+ for(const [path,method]of [['/api/reviewers','GET'],['/api/admin/reviewers','GET'],['/api/admin/results','GET'],['/api/admin/assignments/expert1','PUT'],['/api/session?preview=reviewer-demo','GET'],['/api/reviewer-access','GET'],['https://evil.invalid/api/session','GET'],['/api/cases/../admin/results','GET'],['/api/cases/case_1/papers/../../secret','GET'],['/api/cases/case_1/papers/'+ 'a'.repeat(32),'POST']])assert.throws(()=>assertReviewerRoute(path,method),/not available/);
 });
 
 test('assignment validation allows three cases, rejects four and duplicate IDs',()=>{

@@ -11,3 +11,4 @@ backend/supabase/.branches/
 *.key
 
 backend/.deploy/
+public/pdfjs/

@@ -115,7 +115,7 @@ Test profiles use `source: Website test fixture`. Test packets use `isTest: true
 
 ## Source literature
 
-Each case has a Source literature tab and subsection with PDF previews, new-tab reading, and downloads. The original case prompt, rubric, and dataset descriptions remain unchanged. Selecting a paper title can attach that reference to feedback. Text selection inside the browser's PDF viewer does not attach passages automatically; reviewers can comment on the paper via its title reference.
+Each case has a Source literature tab and subsection with PDF previews, new-tab reading, and downloads. The original case prompt, rubric, and dataset descriptions remain unchanged. Selecting a paper title can attach that reference to feedback. The PDF.js reader supports page navigation, zoom, and selectable text. Selecting text inside the paper does not attach passages automatically; reviewers can comment on the paper via its title reference.
 
 The PDFs and their case catalog are private backend content, never GitHub Pages assets. `pmx_literature` denies direct browser access. The server checks current case assignment before listing papers or issuing five-minute signed read/download links. Test copies resolve to their original case literature without duplicate uploads. The `pmxbench-literature` Storage bucket must stay private, with no public SELECT policies; the server uses its existing service role to sign PDF links.
 

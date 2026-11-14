@@ -12,11 +12,14 @@
     "preview": "vite preview --host 127.0.0.1",
     "test": "node --experimental-strip-types --test scripts/*.test.mjs",
     "typecheck:backend": "tsc --noEmit -p backend/tsconfig.json",
-    "seed:prepare": "node scripts/generate-private-seed.mjs"
+    "seed:prepare": "node scripts/generate-private-seed.mjs",
+    "prebuild": "node scripts/prepare-pdfjs-assets.mjs",
+    "predev": "node scripts/prepare-pdfjs-assets.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.0",
     "lucide-react": "^1.31.0",
+    "pdfjs-dist": "^6.5.438",
     "react": "19.2.6",
     "react-dom": "19.2.6"
   },
@@ -27,6 +30,6 @@
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.0.2",
     "typescript": "5.9.3",
-    "vite": "8.0.13"
+    "vite": "^8.3.8"
   }
 }

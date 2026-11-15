@@ -35,7 +35,7 @@ async function scope(a:Actor,preview:string|null){
  return {actor:a,reviewerId:a.reviewerId,name:a.name,email:a.email,cases,preview:false,samplePreview:false,status:'verified'};
 }
 type Scope=Awaited<ReturnType<typeof scope>>;
-async function packet(s:Scope,id:string){if(!s.cases.some((c:any)=>c.id===id))throw new ApiError(404,'This case is not assigned to you.');const row=await query(db.from('pmx_cases').select('packet').eq('id',id).maybeSingle());if(!row)throw new ApiError(404,'Case not found.');const c=literatureView(caseView(row.packet)),papers=await query(db.from('pmx_literature').select('meta').eq('case_id',c.testSourceCaseId??c.id).order('paper_id'));return {...c,literature:papers.map((p:any)=>p.meta)};}
+async function packet(s:Scope,id:string){if(!s.cases.some((c:any)=>c.id===id))throw new ApiError(404,'This case is not assigned to you.');const row=await query(db.from('pmx_cases').select('packet').eq('id',id).maybeSingle());if(!row)throw new ApiError(404,'Case not found.');const c=literatureView(caseView(row.packet)),sourceId=c.testSourceCaseId??c.id;const [papers,guide]=await Promise.all([query(db.from('pmx_literature').select('meta,is_key_source').eq('case_id',sourceId).order('paper_id')),query(db.from('pmx_material_guides').select('payload').eq('case_id',sourceId).maybeSingle())]);return {...c,...(guide?{materialsGuide:{revision:guide.payload.revision,objective:guide.payload.objective,scope:guide.payload.scope},materials:c.materials.map((m:any)=>({...m,guide:guide.payload.files[m.name]}))}:{}),literature:papers.filter((p:any)=>p.is_key_source).map((p:any)=>p.meta).sort((a:any,b:any)=>(a.sourceOrder??0)-(b.sourceOrder??0)),legacyLiterature:papers.filter((p:any)=>!p.is_key_source).map((p:any)=>p.meta)};}
 async function state(s:Scope){
  if(s.samplePreview)return {ratings:{},reviewed:[],feedback:[]};
  const [reviews,comments]=await Promise.all([collect(()=>db.from('pmx_reviews').select('*').eq('reviewer_id',s.reviewerId).order('case_id')),collect(()=>db.from('pmx_comments').select('*').eq('reviewer_id',s.reviewerId).order('created_at').order('id'))]);
@@ -49,7 +49,7 @@ async function route(a:Actor,path:string,method:string,data:Record<string,any>){
  if(p==='/api/session'&&method==='GET')return {user:{id:a.userId,name:s.name,email:s.email},role:s.preview?'preview':a.coordinator?'coordinator':'reviewer',reviewerId:s.reviewerId,readOnly:s.preview,samplePreview:s.samplePreview,reviewerStatus:s.status,identityMethod:a.identityMethod,cases:s.cases,review:await state(s)};
  const paperMatch=p.match(/^\/api\/cases\/([a-zA-Z0-9_-]+)\/papers\/([a-f0-9]{32})$/);
  if(paperMatch&&method==='GET'){
-  const c=await packet(s,paperMatch[1]),paper=c.literature.find((p:any)=>p.id===paperMatch[2]);
+  const c=await packet(s,paperMatch[1]),paper=[...c.literature,...c.legacyLiterature].find((p:any)=>p.id===paperMatch[2]);
   if(!paper)throw new ApiError(404,'This paper is not part of your assigned case.');
   const row=await query(db.from('pmx_literature').select('object_path').eq('case_id',c.testSourceCaseId??c.id).eq('paper_id',paper.id).maybeSingle());
   if(!row||!/^[a-f0-9]{64}\.pdf$/.test(row.object_path))throw new ApiError(404,'Paper not found.');

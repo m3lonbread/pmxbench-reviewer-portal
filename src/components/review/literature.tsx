@@ -8,9 +8,11 @@ import {SourceText,type Flash} from './content';
 type PaperLinks={url:string;downloadUrl:string;expiresAt:string};
 const PaperPreview=lazy(()=>import('./paper-preview'));
 
-export function SourceLiterature({c,flash,previewQuery}:{c:CaseDetail;flash:Flash;previewQuery:string}){
+export function SourceLiterature({c,flash,previewQuery,focusedPaperId}:{c:CaseDetail;flash:Flash;previewQuery:string;focusedPaperId?:string|null}){
  const [paper,setPaper]=useState<LiteraturePaper|null>(null),[links,setLinks]=useState<PaperLinks|null>(null),[error,setError]=useState(''),[attempt,setAttempt]=useState(0);
  const dialog=useRef<HTMLDivElement>(null),close=useRef<HTMLButtonElement>(null);
+ const historical=c.legacyLiterature?.find(p=>p.id===focusedPaperId);
+ const papers=historical?[...c.literature,historical]:c.literature??[];
  const section=c.sections.find(s=>s.type==='Source literature')!;
  useEffect(()=>{
   if(!paper)return;let active=true;setLinks(null);setError('');
@@ -29,11 +31,11 @@ export function SourceLiterature({c,flash,previewQuery}:{c:CaseDetail;flash:Flas
   };
   document.addEventListener('keydown',onKey);return()=>{document.removeEventListener('keydown',onKey);previous?.focus();};
  },[paper]);
- return <div className="source-literature"><div className="literature-intro"><BookOpen size={19}/><div><h3>Read the source papers</h3><p>Optional reading for this case. Preview a paper here, or open and download the PDF.</p></div></div>
-  {(c.literature??[]).length?<div className="literature-list">{c.literature.map(p=><div className="literature-card" key={p.id}>
-   <span className="literature-file-icon"><FileText size={20}/><small>PDF</small></span><div className="literature-details"><SourceText c={c} s={section} id={`${c.id}-paper-${p.id}`} text={p.title} kind="Source literature · paper" flash={flash} tag="h4"/><p>{p.pages} pages<span>·</span>{(p.bytes/1024/1024).toFixed(1)} MB</p><details><summary>File name</summary><small>{p.fileName}</small></details></div>
+ return <div className="source-literature"><div className="literature-intro"><BookOpen size={19}/><div><h3>Key papers behind this case</h3><p>Curator-designated primary reference-model papers used to develop this case. Preview a paper here, or open and download the PDF.</p></div></div>
+  {papers.length?<div className="literature-list">{papers.map(p=><div className="literature-card" key={p.id}>
+   <span className="literature-file-icon"><FileText size={20}/><small>PDF</small></span><div className="literature-details"><SourceText c={c} s={section} id={`${c.id}-paper-${p.id}`} text={p.title} kind="Source literature · paper" flash={flash} tag="h4"/><span className="key-paper-label">{p.keySource?'Primary reference-model paper':'Previously referenced paper'}</span><p>{p.pages} pages<span>·</span>{(p.bytes/1024/1024).toFixed(1)} MB</p><details><summary>File name</summary><small>{p.fileName}</small></details></div>
    <button className="button outline literature-open" aria-label={`Read PDF: ${p.title}`} onClick={()=>{setLinks(null);setError('');setPaper(p);}}><BookOpen size={14}/>Read PDF</button>
-  </div>)}</div>:<p className="section-intro">No source PDFs have been added for this case yet.</p>}
+  </div>)}</div>:<p className="section-intro">No key source PDF has been added for this case yet.</p>}
   {paper&&createPortal(<div className="paper-reader-backdrop" onClick={()=>setPaper(null)}><div className="paper-reader" ref={dialog} role="dialog" aria-modal="true" aria-labelledby="paper-reader-title" onClick={e=>e.stopPropagation()}>
    <div className="paper-reader-heading"><div><span className="eyebrow">CASE {c.number} · SOURCE LITERATURE</span><h2 id="paper-reader-title">{paper.title}</h2></div><button ref={close} className="icon-button" aria-label="Close paper" onClick={()=>setPaper(null)}><X size={21}/></button></div>
    <div className="paper-reader-toolbar"><span>{paper.pages} pages · PDF</span><div>{links&&<><a className="button outline" href={links.url} target="_blank" rel="noopener noreferrer">Open in new tab<ArrowUpRight size={14}/></a><a className="button primary" href={links.downloadUrl} target="_blank" rel="noopener noreferrer"><ArrowDownToLine size={14}/>Download PDF</a></>}<button className="button outline" onClick={()=>setAttempt(n=>n+1)}>Refresh paper</button></div></div>

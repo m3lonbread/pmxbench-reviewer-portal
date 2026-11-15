@@ -1,10 +1,11 @@
 import version from './packet-version.json';
 export type Section = {id:string;number:string;title:string;type:string};
 export type ReviewCase = {isTest?:boolean;testSourceCaseNumber?:number;testSourceCaseId?:string;testSourceRevision?:string;id:string;slug:string;number:number;title:string;track:string;trackCode:string;subtitle:string;revision:string;sourceRoot:string;fileCount:number;criterionCount:number;sections:Section[]};
-export type MaterialDescription={id:string;name:string;description:string;format:string};
+export type MaterialGuide={summary:string;rows?:number;columns?:number;blocks:{id:string;label:string;text:string}[];endpointCoverage?:string;fields:{id:string;name:string;text:string;defined:boolean;blankCells:number}[]};
+export type MaterialDescription={id:string;name:string;description:string;format:string;guide?:MaterialGuide};
 export type RubricBlock = {id:string;text?:string;style?:string;rows?:string[][]};
-export type LiteraturePaper={id:string;title:string;fileName:string;bytes:number;pages:number;sha256:string};
-export type CaseDetail = ReviewCase & {prompt:string;rubric:RubricBlock[];materials:MaterialDescription[];literature:LiteraturePaper[]};
+export type LiteraturePaper={id:string;title:string;fileName:string;bytes:number;pages:number;sha256:string;keySource?:boolean;sourceOrder?:number};
+export type CaseDetail = ReviewCase & {prompt:string;rubric:RubricBlock[];materials:MaterialDescription[];literature:LiteraturePaper[];legacyLiterature?:LiteraturePaper[];materialsGuide?:{revision:string;objective:string;scope:string}};
 export const packetRevision=version.revision;
 export const ratingFields=[
  {key:'scientificSoundness',label:'Scientific soundness',hint:'Are the scientific assumptions and methods sound?',options:['Adequate','Minor concerns','Major concerns','Unable to assess']},

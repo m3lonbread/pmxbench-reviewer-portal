@@ -1,4 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
+import {normalizeQuotes} from '../backend/supabase/functions/pmxbench/domain.ts';
 import {reviewerCredentials,reviewerNameMatches,assertReviewerMatch,newReviewerToken,hashReviewerValue} from '../backend/supabase/functions/pmxbench/picker.ts';
 test('typed details accept harmless formatting, honorifics, and recorded nickname variants without accepting another name',()=>{
  assert.deepEqual(reviewerCredentials({name:'  Dr. Liang Zhao ',email:' Test@Example.test '}),{name:'Dr. Liang Zhao',email:'test@example.test'});
@@ -17,7 +18,7 @@ test('the actual reviewer handler requires a server-issued session and keeps it 
  const originalFetch=globalThis.fetch,originalDeno=globalThis.Deno;
  const person={id:'test-reviewer',name:'Synthetic Reviewer',status:'verified',login_email:'reviewer@example.test'};
  const sessions=new Map();let attempts=0,signCalls=0;
- const packet={id:'assigned',number:1,title:'Test copy · Synthetic packet',revision:'r',isTest:true,testSourceCaseNumber:1,testSourceCaseId:'official-source',subtitle:'Overview',prompt:'A source passage',materials:[],rubric:[],sections:[{id:'overview',number:'1.1',title:'Overview'},{id:'prompt',number:'1.2',title:'Prompt'}]};
+ const packet={id:'assigned',number:1,title:'Test copy · Synthetic packet',revision:'r',isTest:true,testSourceCaseNumber:1,testSourceCaseId:'official-source',subtitle:'Overview',prompt:'A source passage',materials:[{id:'observed',name:'observed_data.csv',description:'Original review focus',format:'CSV'}],rubric:[],sections:[{id:'overview',number:'1.1',title:'Overview'},{id:'prompt',number:'1.2',title:'Prompt'},{id:'materials',number:'1.3',title:'Materials description'},{id:'rubric',number:'1.4',title:'Rubric'},{id:'ratings',number:'1.5',title:'Ratings'}]};
  globalThis.Deno={env:{get:n=>({PMXBENCH_FRONTEND_ORIGIN:'https://portal.example.test',SUPABASE_URL:'https://database.example.test',SUPABASE_SERVICE_ROLE_KEY:'unit-test-service-key'})[n]}};
  globalThis.fetch=async(input,init)=>{
   const url=new URL(typeof input==='string'?input:input.url??String(input)),path=url.pathname.split('/').at(-1),method=init?.method??'GET',payload=init?.body?JSON.parse(init.body):null;
@@ -25,7 +26,8 @@ test('the actual reviewer handler requires a server-issued session and keeps it 
   const one=url.searchParams.get('select')==='value'||String(init?.headers?.get?.('Accept')??init?.headers?.Accept??'').includes('vnd.pgrst.object');
   const eq=k=>url.searchParams.get(k)?.replace(/^eq\./,'');
   if(url.pathname.startsWith('/storage/v1/object/sign/pmxbench-literature/')){signCalls++;assert.equal(payload.expiresIn,300);data={signedURL:'/object/sign/pmxbench-literature/'+ 'a'.repeat(64)+'.pdf?token=synthetic'};}
-  else if(path==='pmx_literature'){assert.equal(eq('case_id'),'official-source');data=url.searchParams.get('select')==='object_path'?{object_path:'a'.repeat(64)+'.pdf'}:[{meta:{id:'a'.repeat(32),title:'Source paper',fileName:'source.pdf',bytes:100,pages:1,sha256:'a'.repeat(64)}}];}
+  else if(path==='pmx_literature'){assert.equal(eq('case_id'),'official-source');data=url.searchParams.get('select')==='object_path'?{object_path:'a'.repeat(64)+'.pdf'}:[{is_key_source:true,meta:{id:'a'.repeat(32),title:'Source paper',fileName:'source.pdf',bytes:100,pages:1,sha256:'a'.repeat(64)}},{is_key_source:false,meta:{id:'c'.repeat(32),title:'Earlier background paper',fileName:'prior.pdf',bytes:100,pages:1,sha256:'c'.repeat(64)}}];}
+  else if(path==='pmx_material_guides'){assert.equal(eq('case_id'),'official-source');data={payload:{revision:'guide-r1',objective:'Case objective',scope:'Case scope',files:{'observed_data.csv':{summary:'65 source observations with declared units.',blocks:[],fields:[{id:'field-0',name:'record_id',text:'Stable observation identifier.'}]}}}};}
   else if(path==='pmx_settings')data={value:true};
   else if(path==='pmx_reserve_reviewer_attempt')data=++attempts<=10;
   else if(path==='pmx_experts')data=(eq('login_email')===person.login_email||eq('id')===person.id)?{...person}:null;
@@ -56,7 +58,8 @@ test('the actual reviewer handler requires a server-issued session and keeps it 
   assert.equal((await request('/api/cases/unassigned/papers/'+'a'.repeat(32),'GET',auth)).status,404);
   assert.equal((await request('/api/cases/assigned/papers/'+'b'.repeat(32),'GET',auth)).status,404);
   assert.equal(signCalls,0);const paper=await request(paperPath,'GET',auth);assert.equal(paper.status,200);assert.equal(signCalls,2);assert.ok(paper.data.url.startsWith('https://database.example.test/storage/v1/object/sign/pmxbench-literature/'));
-  const content=await request('/api/cases/assigned','GET',auth);assert.equal(content.data.literature.length,1);assert.equal(content.data.sections.at(-1).title,'Source literature');assert.equal(JSON.stringify(content.data).includes('object_path'),false);
+  const content=await request('/api/cases/assigned','GET',auth);assert.equal(content.data.literature.length,1);assert.equal(content.data.sections.at(-1).title,'Key source literature');assert.equal(content.data.legacyLiterature.length,1);assert.equal(content.data.materials[0].description,'Original review focus');
+  const guideQ={caseId:'assigned',blockId:'assigned-material-observed-summary',revision:'guide-r1',start:0,end:39,text:'65 source observations with declared units.'};guideQ.end=guideQ.text.length;const [normalized]=await normalizeQuotes([guideQ],['assigned'],async()=>content.data);assert.equal(normalized.revision,'guide-r1');assert.equal(normalized.sectionTitle,'Materials description');await assert.rejects(normalizeQuotes([{...guideQ,revision:'old-guide'}],['assigned'],async()=>content.data),/could not be verified/);assert.equal(JSON.stringify(content.data).includes('object_path'),false);
   assert.equal((await request('/api/session','GET',{...auth,reviewerId:'another-reviewer'})).status,403);
   assert.equal((await request('/api/cases/unassigned','GET',auth)).status,404);
   assert.equal((await request('/api/admin/results','GET',auth)).status,403);

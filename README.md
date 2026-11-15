@@ -32,6 +32,7 @@ Create a Supabase Free project owned by the host. Apply the SQL migrations in fi
 4. `backend/supabase/migrations/202611120004_reviewer_email_access.sql`
 5. `backend/supabase/migrations/202611130005_archive_feedback.sql`
 6. `backend/supabase/migrations/202611130006_source_literature.sql`
+7. `backend/supabase/migrations/202611150007_case_material_guides.sql`
 
 Prepare private initial data locally:
 
@@ -113,10 +114,16 @@ The existing private Site is unchanged. Historical production reviews are not au
 Test profiles use `source: Website test fixture`. Test packets use `isTest: true`; copies of real packets also record their source case/revision. Test feedback is available in that reviewer’s workspace and individual export, but excluded from coordinator benchmark CSV/JSON exports and benchmark totals. Copies retain complete official scientific text and descriptions without staged files. Reviewer-facing copies use clean case titles and no test-case banners; internal test flags still exclude their responses from benchmark results. Archived packets and comments are hidden from active workspaces while historical feedback stays stored. Apply all SQL migrations, including `202611130005_archive_feedback.sql`, when provisioning a backend. Keep fixture SQL, contact addresses, and copied packets in ignored `backend/private/`.
 
 
-## Source literature
+## Key source literature and material descriptions
 
-Each case has a Source literature tab and subsection with PDF previews, new-tab reading, and downloads. The original case prompt, rubric, and dataset descriptions remain unchanged. Selecting a paper title can attach that reference to feedback. The PDF.js reader supports page navigation, zoom, and selectable text. Selecting text inside the paper does not attach passages automatically; reviewers can comment on the paper via its title reference.
+The Key literature tab lists curator-designated primary reference-model papers from `mechanistic_pkpd_benchmark/case_summary_cards_source/manifest.json`, matched to the official cases. The full participant background archives are described in the material guide. Summary-card PNGs and raw staged inputs are not served. Historical paper references remain resolvable when opening saved feedback.
 
-The PDFs and their case catalog are private backend content, never GitHub Pages assets. `pmx_literature` denies direct browser access. The server checks current case assignment before listing papers or issuing five-minute signed read/download links. Test copies resolve to their original case literature without duplicate uploads. The `pmxbench-literature` Storage bucket must stay private, with no public SELECT policies; the server uses its existing service role to sign PDF links.
+The PDF.js reader supports previews, page navigation, zoom, selectable text, new-tab reading, and downloads. Selecting a paper title attaches its source reference to feedback. Text selection inside the PDF reader does not attach excerpts automatically.
 
-To provision source literature from the owner-supplied official collection, install `pypdf` in the local Python environment and run `python3 scripts/prepare-literature.py`. It reads only PDFs inside each case's `literature.zip`, validates page counts, deduplicates bytes by SHA-256, and creates ignored `backend/private/literature-seed.sql`, a manifest, and `literature-pdfs/`. Run the seed after the main case seed; upload the flat PDF directory to the private `pmxbench-literature` bucket with `application/pdf` content type. No non-PDF archive entries or datasets are uploaded. Keep all generated data private.
+PDFs and case-specific descriptions remain private backend content. `pmx_literature` and `pmx_material_guides` deny direct browser access. The server checks current case assignment before listing papers or issuing five-minute signed read/download links. Test copies resolve to their original case's primary papers and descriptions. Keep the `pmxbench-literature` Storage bucket private, with no public SELECT policies.
+
+After applying all migrations and the main case seed, run `python3 scripts/prepare-literature.py` in a Python environment with `pypdf`. It verifies the curator manifest hashes and prepares ignored `backend/private/key-literature-seed.sql`, `key-literature-manifest.json`, and `key-literature-pdfs/`. Apply the seed and upload those PDFs to the private bucket. Re-running the seed preserves background source records and marks the designated primary sources; it does not delete old PDFs or feedback.
+
+Run `python3 scripts/prepare-material-guides.py` against the owner-supplied current `three_tier` inputs. It creates descriptive profiles for all staged files: row/column counts, roles, endpoints and units, observation granularity, time domains, event handling, required artifacts, missingness, and field definitions. It emits no participant-level observation rows, executable model files, or raw input downloads. Apply the six ignored `backend/private/material-guides-part-*.sql` files in order.
+
+Descriptions are overlays on the stored scientific packets. Original prompt/rubric text, legacy material source blocks, and saved quotations stay intact. New description blocks carry a separate content revision, verified by the server when a comment is submitted. Source navigation expands collapsed field guides before highlighting the cited passage. Store all generated case data and PDFs outside Git and the public build.

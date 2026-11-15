@@ -10,7 +10,8 @@ const forbidden=['backend/private','SUPABASE_SERVICE_ROLE_KEY'];
 assert.ok(!/sb_secret_[A-Za-z0-9_-]{16,}/.test(content),'Server secret found in static output.');
 try{const packets=JSON.parse(await readFile(new URL('../backend/private/case-packets.json',import.meta.url),'utf8'));for(const c of Object.values(packets))forbidden.push(c.title);}catch{}
 try{const contacts=JSON.parse(await readFile(new URL('../backend/private/optional-contact-tracker.json',import.meta.url),'utf8'));for(const p of contacts.people)forbidden.push(p.email);}catch{}
-try{const literature=JSON.parse(await readFile(new URL('../backend/private/literature-manifest.json',import.meta.url),'utf8'));for(const p of literature.papers)forbidden.push(p.meta.sha256);}catch{}
+for(const name of ['literature-manifest.json','key-literature-manifest.json'])try{const literature=JSON.parse(await readFile(new URL('../backend/private/'+name,import.meta.url),'utf8'));for(const p of literature.papers)forbidden.push(p.meta.sha256);}catch{}
+try{const guides=JSON.parse(await readFile(new URL('../backend/private/material-guides.json',import.meta.url),'utf8'));for(const guide of Object.values(guides))forbidden.push(guide.revision);}catch{}
 for(const value of forbidden)assert.ok(!content.includes(value),'Private/server content found in static output.');
 const html=await readFile(new URL('index.html',root),'utf8');assert.ok(html.includes('/assets/'));assert.ok(!html.includes('src/main.tsx'));
 console.log(`PASS: ${files.length} static build files; no case packets, contacts, or server credentials in the Pages artifact.`);

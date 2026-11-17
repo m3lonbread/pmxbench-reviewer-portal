@@ -1,5 +1,6 @@
 
 'use client';
+import {reviewerRubric} from './rubric-structure';
 import type {CaseDetail,ReviewCase,Section} from '../../app/review-data';
 export type Source={caseId:string;caseNumber:number;caseTitle:string;sectionId:string;sectionNumber:string;sectionTitle:string;contentType:string;blockId:string;start:number;end:number;text:string;revision:string;fileName?:string};
 export type Flash={blockId:string;start:number;end:number}|null;
@@ -9,7 +10,7 @@ export function SourceText({c,s,id,text,kind,flash,tag='p',file,row,column,revis
 }
 export function Rubric({c,flash,notify}:{c:CaseDetail;flash:Flash;notify:(s:string)=>void}){
  const s=c.sections[3];
- return <div className="complete-rubric"><div className="document-toolbar"><span>Complete rubric · {c.criterionCount} scored criteria</span><span>Full scoring criteria and pass/fail gates</span></div>{c.rubric.map(b=>{
+ return <div className="complete-rubric"><div className="document-toolbar"><span>Complete rubric · {c.criterionCount} scored criteria</span><span>Full scoring criteria and pass/fail gates</span></div>{reviewerRubric(c.rubric).map(b=>{
   if(b.text)return <SourceText key={b.id} c={c} s={s} id={b.id} text={b.text} flash={flash} tag={/heading|title/i.test(b.style??'')?'h4':'p'}/>;
   if(b.rows?.some(row=>row.length===4))return <div className="rubric-criteria" key={b.id}>{b.rows.map((row,i)=>row.length===4?<div className="full-criterion" key={i}><div className="criterion-meta">{row.slice(0,2).map((cell,col)=><SourceText key={col} c={c} s={s} id={`${b.id}-r${i}-c${col}`} text={cell} flash={flash} tag="span" kind="Grading rubric · criterion metadata"/>)}</div><SourceText c={c} s={s} id={`${b.id}-r${i}-c2`} text={row[2]} flash={flash} tag="h4" kind="Grading rubric · criterion"/><SourceText c={c} s={s} id={`${b.id}-r${i}-c3`} text={row[3]} flash={flash} kind="Grading rubric · complete scoring evidence"/></div>:<div key={i} className="rubric-dimension-note">{row.map((cell,col)=><SourceText key={col} c={c} s={s} id={`${b.id}-r${i}-c${col}`} text={cell} flash={flash} tag="span"/>)}</div>)}</div>;
   return <div className="rubric-table-wrap" key={b.id}><table className="rubric-table"><tbody>{b.rows?.map((row,i)=><tr key={i}>{row.map((cell,col)=><td key={col}><SourceText c={c} s={s} id={`${b.id}-r${i}-c${col}`} text={cell} flash={flash} tag="span"/></td>)}</tr>)}</tbody></table></div>;

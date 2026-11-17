@@ -127,3 +127,10 @@ After applying all migrations and the main case seed, run `python3 scripts/prepa
 Run `python3 scripts/prepare-material-guides.py` against the owner-supplied current `three_tier` inputs. It creates descriptive profiles for all staged files: row/column counts, roles, endpoints and units, observation granularity, time domains, event handling, required artifacts, missingness, and field definitions. It emits no participant-level observation rows, executable model files, or raw input downloads. Apply the six ignored `backend/private/material-guides-part-*.sql` files in order.
 
 Descriptions are overlays on the stored scientific packets. Original prompt/rubric text, legacy material source blocks, and saved quotations stay intact. New description blocks carry a separate content revision, verified by the server when a comment is submitted. Source navigation expands collapsed field guides before highlighting the cited passage. Store all generated case data and PDFs outside Git and the public build.
+
+
+Reviewer orientation and rubric presentation:
+
+The five-step Review guide opens automatically for each new reviewer login. Dismissing it is remembered for that login in sessionStorage, so refreshing does not reopen it. Reviewers can reopen it with Review guide; coordinators and read-only previews do not receive the automatic prompt. The guide covers navigation, comparison and literature, quick ratings, source-linked/general comments, and saving/completion.
+
+Reviewer rubrics display all scored criteria and required pass/fail gates, while supplementary notes after the criteria are omitted. The original stored packet, block identifiers, and saved quotations remain unchanged. A historical quotation of an omitted appendix opens the current rubric with an explanation.

@@ -136,7 +136,7 @@ Reviewer orientation and rubric presentation:
 
 The nine-step guided Review guide opens automatically for each new reviewer login. Dismissing it is remembered for that login in sessionStorage, so refreshing does not reopen it. Reviewers can reopen it with Review guide; coordinators and read-only previews do not receive the automatic prompt. The guide covers navigation, comparison and literature, quick ratings, source-linked/general comments, and saving/completion.
 
-Reviewer rubrics display all scored criteria and required pass/fail gates, while supplementary notes after the criteria are omitted. The original stored packet, block identifiers, and saved quotations remain unchanged. A historical quotation of an omitted appendix opens the current rubric with an explanation.
+Reviewer rubrics display all scored criteria and required pass/fail gates, while supplementary notes after the criteria and redundant date/dimensions/points subtitles are omitted. The original stored packet, block identifiers, and saved quotations remain unchanged. A historical quotation of an omitted appendix opens the current rubric with an explanation.
 
 
 Streamlined reviewer interface:

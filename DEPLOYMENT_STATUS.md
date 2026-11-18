@@ -179,3 +179,10 @@ Neutral dictionary descriptions and rubric subtitles, 17 November 2026:
 - Removed the redundant date/Five dimensions/100 points subtitle from all 53 rubric displays. Every other previously visible rubric block, including all scoring criteria and pass/fail gates, is unchanged. Original packet text and historical quotation references remain stored.
 - Both Supabase handlers were updated. All 24 tests, backend type-check, frontend build, and static privacy audit passed. Pages deployment 44223664411 for 304e18b and final subtitle deployment 44224351530 for e42ce75 succeeded.
 - Browser verification showed the neutral dictionary description beside the rubric with no redundant subtitle. A proof image is stored in workspace outputs/pmxbench-neutral-dictionary-description-20261117.png. Private imports, snapshots, source audits, and live verification reports remain ignored.
+
+
+Review-instructions walkthrough step, 17 November 2026:
+
+- Added Review instructions as step 2, immediately after assigned cases. The guide returns to the document view, closes the case drawer, scrolls to and highlights the global instructions, and explains that experts assess each case and rubric for scientific soundness, clarity, and alignment. The next step remains the participant prompt.
+- The walkthrough now contains ten steps and its welcome count follows the step list automatically. Login/dismissal behavior is unchanged. No backend, assignment, case content, or saved review data was modified.
+- All 24 tests, frontend build, and static privacy audit passed. Pages deployment 44225784071 for 475c313 succeeded. Live browser checks verified assigned cases → instructions → prompt, Back restoring the instruction spotlight, and exactly one highlighted target. The test reviewer walkthrough is left open at step 2; no feedback, ratings, or completion state was submitted. Proof is saved in workspace outputs/pmxbench-walkthrough-review-instructions-20261117.png.

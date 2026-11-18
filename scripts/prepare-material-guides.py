@@ -156,7 +156,7 @@ def make_table_guide(name, fields, rows, dictionary, index, contract):
         summary += ' Includes ' + ', '.join(f'{v} ({c:,} rows)' for v, c in top) + (f', plus {len(endpoints)-4} other endpoint types.' if len(endpoints)>4 else '.')
     if name == 'input_variable_dictionary.csv':
         described_files = sorted({Path(pick(r, ['file', 'file_name'])).name for r in rows} - {''})
-        summary = f'{n:,} field-definition entries across {len(described_files)} staged files. It specifies the field meanings, unit domains, coding, keys, and missingness rules that the model must preserve.'
+        summary = f'{n:,} field-definition entries across {len(described_files)} staged files. It describes identifiers, scientific variables, units, coding, and relationships between the input tables.'
     blocks = []
     block(blocks, 'scope', 'Records and scope', ids_text + ('. ' if ids_text else '') + time_profile(fields, rows))
     if roles:

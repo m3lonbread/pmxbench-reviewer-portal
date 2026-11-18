@@ -11,7 +11,11 @@ export function materialSummary(m:MaterialDescription,limit=240){
 }
 
 // Older comments can still open the one passage they cited without restoring the field catalog.
-export function materialPassage(c:CaseDetail,blockId:string){
+export function materialPassage(c:CaseDetail,blockId:string,sourceRevision?:string){
+ if(sourceRevision&&sourceRevision!==c.materialsGuide?.revision&&sourceRevision!==c.reviewGuide?.revision){
+  const old=c.materialGuideHistory?.find(g=>sourceRevision===g.revision||sourceRevision===g.review?.revision);
+  if(old)c={...c,materialsGuide:old,reviewGuide:old.review,materials:c.materials.map(m=>({...m,guide:old.files[m.name]}))};
+ }
  const revision=c.materialsGuide?.revision;
  for(const m of c.materials)if(blockId===`${c.id}-material-${m.id}-brief`&&c.reviewGuide?.materials[m.name])return {text:c.reviewGuide.materials[m.name],revision:c.reviewGuide.revision};
  for(const key of ['objective','scope'] as const)if(blockId===`${c.id}-materials-${key}`&&c.materialsGuide?.[key])return {text:c.materialsGuide[key],revision};

@@ -1,11 +1,13 @@
 import version from './packet-version.json' with {type:'json'};
 export type Section = {id:string;number:string;title:string;type:string};
 export type ReviewCase = {isTest?:boolean;testSourceCaseNumber?:number;testSourceCaseId?:string;testSourceRevision?:string;id:string;slug:string;number:number;title:string;track:string;trackCode:string;subtitle:string;revision:string;sourceRoot:string;fileCount:number;criterionCount:number;sections:Section[]};
-export type MaterialGuide={summary:string;rows?:number;columns?:number;blocks:{id:string;label:string;text:string}[];endpointCoverage?:string;fields:{id:string;name:string;text:string;defined:boolean;blankCells:number}[]};
+export type MaterialGuide={summary:string;rows?:number;columns?:number;blocks:{id:string;label:string;text:string}[];endpointCoverage?:string;fields:{id:string;name:string;text:string;defined:boolean;blankCells?:number}[]};
+export type ReviewGuide={revision:string;goal:string;materials:Record<string,string>};
+export type MaterialGuideVersion={revision:string;objective:string;scope:string;files:Record<string,MaterialGuide>;review?:ReviewGuide};
 export type MaterialDescription={id:string;name:string;description:string;format:string;guide?:MaterialGuide};
 export type RubricBlock = {id:string;text?:string;style?:string;rows?:string[][]};
 export type LiteraturePaper={id:string;title:string;fileName:string;bytes:number;pages:number;sha256:string;keySource?:boolean;sourceOrder?:number};
-export type CaseDetail = ReviewCase & {prompt:string;rubric:RubricBlock[];materials:MaterialDescription[];literature:LiteraturePaper[];legacyLiterature?:LiteraturePaper[];reviewGoal?:{text:string;revision:string};reviewGuide?:{revision:string;goal:string;materials:Record<string,string>};materialsGuide?:{revision:string;objective:string;scope:string}};
+export type CaseDetail = ReviewCase & {prompt:string;rubric:RubricBlock[];materials:MaterialDescription[];literature:LiteraturePaper[];legacyLiterature?:LiteraturePaper[];reviewGoal?:{text:string;revision:string};reviewGuide?:ReviewGuide;materialsGuide?:{revision:string;objective:string;scope:string};materialGuideHistory?:MaterialGuideVersion[]};
 export const packetRevision=version.revision;
 export const ratingFields=[
  {key:'scientificSoundness',label:'Scientific soundness',hint:'Are the scientific assumptions and methods sound?',options:['Adequate','Minor concerns','Major concerns','Unable to assess']},

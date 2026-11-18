@@ -2,7 +2,7 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import type {CaseRating,ReviewCase} from '../../app/review-data';
 import type {Source} from './content';
-export type Feedback={id:string;text:string;quotes:Source[];createdAt:string;reviewer:string;identityMethod?:string};
+export type Feedback={id:string;text:string;quotes:Source[];createdAt:string;updatedAt?:string;version?:number;reviewer:string;identityMethod?:string};
 export type ReviewState={ratings:Record<string,CaseRating>;reviewed:string[];feedback:Feedback[]};
 export type ReviewSession={user:{id:string;name:string;email:string};role:'coordinator'|'reviewer'|'preview';reviewerId:string;identityMethod:'verified_email'|'self_selected_name'|'name_email_match';readOnly:boolean;samplePreview:boolean;reviewerStatus:'preliminary'|'verified'|'inactive';cases:ReviewCase[];review:ReviewState};
 export {api as fetchJson} from '../../lib/api';
@@ -27,5 +27,6 @@ export function useCloudReview(session:ReviewSession,previewQuery:string){
  function updateRating(id:string,next:CaseRating){if(session.readOnly)return;const previous=ratingsRef.current[id],values:Record<string,string|null>={};for(const key of new Set([...Object.keys(previous?.values??{}),...Object.keys(next.values)])){const k=key as keyof CaseRating['values'];if(previous?.values[k]!==next.values[k])values[key]=next.values[k]??null;}const patch:Record<string,unknown>={};if(Object.keys(values).length)patch.values=values;for(const key of ['difficultyFeedback','improvements','recommendation'] as const)if(previous?.[key]!==next[key])patch[key]=next[key];ratingsRef.current={...ratingsRef.current,[id]:next};setRatings(ratingsRef.current);if(Object.keys(patch).length)queue({caseId:id,ratingPatch:patch});}
  function toggleReviewed(id:string){if(session.readOnly)return;const value=!reviewed.includes(id);setReviewed(prev=>value?[...prev,id]:prev.filter(x=>x!==id));queue({caseId:id,reviewed:value});}
  async function postComment(data:{id:string;text:string;quotes:Source[]}){if(session.readOnly)throw new Error('Reviewer previews are read-only.');setSubmitting(true);try{const entry=await fetchJson('/api/comments'+previewQuery,{method:'POST',body:JSON.stringify(data)},session.reviewerId) as Feedback;setFeedback(prev=>prev.some(c=>c.id===entry.id)?prev:[...prev,entry]);return entry;}finally{setSubmitting(false);}}
- return {ratings,reviewed,feedback,saving,error,submitting,updateRating,toggleReviewed,postComment,retry:flush};
+ async function editComment(id:string,text:string,version:number){if(session.readOnly)throw new Error('Reviewer previews are read-only.');const entry=await fetchJson('/api/comments/'+id+previewQuery,{method:'PATCH',body:JSON.stringify({text,version})},session.reviewerId) as Feedback;setFeedback(prev=>prev.map(c=>c.id===entry.id?entry:c));}
+ return {ratings,reviewed,feedback,saving,error,submitting,updateRating,toggleReviewed,postComment,editComment,retry:flush};
 }

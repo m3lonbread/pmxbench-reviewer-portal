@@ -9,6 +9,7 @@ export function assertReviewerRoute(path:string,method:string){
   ||(method==='GET'&&/^\/api\/cases\/[a-zA-Z0-9_-]+$/.test(path))
   ||(method==='GET'&&/^\/api\/cases\/[a-zA-Z0-9_-]+\/papers\/[a-f0-9]{32}$/.test(path))
   ||(path==='/api/reviews'&&method==='PATCH')
+  ||(method==='PATCH'&&/^\/api\/comments\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(path))
   ||(method==='POST'&&['/api/reviewer-access','/api/reviewer-logout','/api/comments'].includes(path));
  if(!allowed)throw new ApiError(403,'This action is not available to reviewers.');
 }

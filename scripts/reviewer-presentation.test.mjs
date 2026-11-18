@@ -1,6 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {reviewerRubric,omittedRubricPassage} from '../src/components/review/rubric-structure.ts';
 import {shouldShowTutorial} from '../src/components/review/tutorial-state.ts';
+import {walkthroughSteps} from '../src/components/review/tutorial-steps.ts';
 import {materialSummary,materialPassage} from '../src/components/review/material-summary.ts';
 test('review rubrics keep scored content and all gate rows while omitting supplementary notes',()=>{
  const scored={id:'criteria',rows:[['Criterion','Points','Assessment','Evidence'],['C5.1','10','Scored requirement','Full evidence']]};
@@ -15,7 +16,7 @@ test('review rubrics keep scored content and all gate rows while omitting supple
  assert.deepEqual(reviewerRubric([intro]),[intro]);
 });
 test('the tutorial opens on each reviewer login, stays dismissed on refresh, and skips coordinator views',()=>{
- const login={reviewerId:'reviewer-a',expiresAt:'2026-11-16T23:00:00Z'},seen={...login,version:1};
+ const login={reviewerId:'reviewer-a',expiresAt:'2026-11-16T23:00:00Z'},seen={...login,version:2};
  assert.equal(shouldShowTutorial('reviewer',login,null),true);assert.equal(shouldShowTutorial('reviewer',login,seen),false);
  assert.equal(shouldShowTutorial('reviewer',{...login,expiresAt:'2026-11-17T23:00:00Z'},seen),true);assert.equal(shouldShowTutorial('reviewer',{...login,reviewerId:'reviewer-b'},seen),true);
  assert.equal(shouldShowTutorial('coordinator',login,null),false);assert.equal(shouldShowTutorial('preview',login,null),false);assert.equal(shouldShowTutorial('reviewer',null,null),false);
@@ -29,4 +30,9 @@ test('concise material summaries retain canonical quotation offsets and older pa
  assert.deepEqual(materialPassage(c,'case1-material-observed'),{text:'Original description',revision:undefined});
  assert.equal(materialPassage(c,'unrelated'),null);
  assert.equal(materialSummary({...material,name:'model_construction_contract.json',guide:{...material.guide,summary:'Model requirements. A much longer explanation.'}}).text,'Model requirements.');
+});
+
+test('the guided review covers the complete workflow without marking or submitting reviews',()=>{
+ assert.deepEqual(walkthroughSteps.map(s=>s.target),['cases','prompt','materials','rubric','compare','ratings','quoted-comment','general-comment','finish']);
+ assert.ok(walkthroughSteps.find(s=>s.target==='general-comment').body.includes('Edit'));
 });

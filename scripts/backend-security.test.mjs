@@ -15,10 +15,11 @@ test('PostgreSQL keeps private data inaccessible and applies review changes atom
   await pg.exec(await readFile(new URL('../backend/supabase/migrations/202611130005_archive_feedback.sql',import.meta.url),'utf8'));
   await pg.exec(await readFile(new URL('../backend/supabase/migrations/202611130006_source_literature.sql',import.meta.url),'utf8'));
   await pg.exec(await readFile(new URL('../backend/supabase/migrations/202611150007_case_material_guides.sql',import.meta.url),'utf8'));
+  await pg.exec(await readFile(new URL('../backend/supabase/migrations/202611170008_edit_comments.sql',import.meta.url),'utf8'));
   for(const id of ['case1','case2','case3','case4'])await pg.query('insert into pmx_cases(id,meta,packet) values($1,$2::jsonb,$3::jsonb)',[id,JSON.stringify({id}),JSON.stringify({id,prompt:'private prompt'})]);
   async function as(role,run){await pg.exec('set role '+role);try{return await run();}finally{await pg.exec('reset role');}}
   await t.test('anonymous and authenticated clients cannot read private tables or invoke privileged RPCs',async()=>{
-   for(const role of ['anon','authenticated'])await as(role,async()=>{for(const table of ['pmx_material_guides','pmx_literature','pmx_cases','pmx_experts','pmx_reviews','pmx_comments','pmx_assignments','pmx_settings','pmx_reviewer_sessions','pmx_reviewer_access_attempts'])await assert.rejects(pg.query('select * from '+table),/permission denied/);await assert.rejects(pg.query("select pmx_write_review('victim','case1','{}',true,'rev')"),/permission denied/);await assert.rejects(pg.query("select pmx_save_expert(null,'{}','attacker')"),/permission denied/);await assert.rejects(pg.query("select pmx_reserve_reviewer_attempt(repeat('a',64))"),/permission denied/);});
+   for(const role of ['anon','authenticated'])await as(role,async()=>{for(const table of ['pmx_comment_edits','pmx_material_guides','pmx_literature','pmx_cases','pmx_experts','pmx_reviews','pmx_comments','pmx_assignments','pmx_settings','pmx_reviewer_sessions','pmx_reviewer_access_attempts'])await assert.rejects(pg.query('select * from '+table),/permission denied/);await assert.rejects(pg.query("select pmx_write_review('victim','case1','{}',true,'rev')"),/permission denied/);await assert.rejects(pg.query("select pmx_save_expert(null,'{}','attacker')"),/permission denied/);await assert.rejects(pg.query("select pmx_reserve_reviewer_attempt(repeat('a',64))"),/permission denied/);});
   });
   await t.test('one-to-three-case plans work; invalid case selections cannot partially activate an expert',async()=>{
    await as('service_role',async()=>{
@@ -48,6 +49,26 @@ test('PostgreSQL keeps private data inaccessible and applies review changes atom
     assert.equal((await pg.query("select pmx_reserve_reviewer_attempt(repeat('a',64)) allowed")).rows[0].allowed,true);
    });
   });
+  await t.test('comment edits enforce ownership, source visibility and optimistic versions while preserving quotations',async()=>{
+   const id='11111111-1111-4111-8111-111111111111',quotes=[{caseId:'case1',blockId:'source',text:'Original quotation'}];
+   await pg.query('insert into pmx_comments(id,reviewer_id,text,quotes,reviewer_name) values($1,$2,$3,$4,$5)',[id,'owner','Original comment',quotes,'Original reviewer']);
+   const original=(await pg.query('select to_jsonb(c) item from pmx_comments c where id=$1',[id])).rows[0].item;
+   const edit=(owner,text,version,ids=['case1'])=>pg.query('select pmx_edit_comment($1,$2,$3,$4,$5) item',[owner,id,text,version,ids]);
+   for(const role of ['anon','authenticated'])await as(role,()=>assert.rejects(edit('owner','Unauthorized',0),/permission denied/));
+   await as('service_role',async()=>{
+    await assert.rejects(edit('other','Other reviewer',0),/Comment not found/);
+    await assert.rejects(edit('owner','Unassigned',0,['case2']),/Comment not found/);
+    await assert.rejects(edit('owner',' ',0),/Enter a comment/);
+    const item=(await edit('owner','Revised comment',0)).rows[0].item;
+    assert.equal(item.text,'Revised comment');assert.equal(item.edit_version,1);assert.ok(item.updated_at);
+    for(const key of ['quotes','reviewer_id','reviewer_name','created_at','identity_method'])assert.deepEqual(item[key],original[key]);
+    await assert.rejects(edit('owner','Stale edit',0),e=>e.code==='PT409'&&/changed elsewhere/.test(e.message));
+    assert.equal((await pg.query('select count(*)::int n from pmx_comment_edits')).rows[0].n,1);
+    await edit('owner','Revised comment',1);assert.equal((await pg.query('select count(*)::int n from pmx_comment_edits')).rows[0].n,1);
+    await pg.query('update pmx_comments set archived_at=now() where id=$1',[id]);
+    await assert.rejects(edit('owner','Archived edit',1),/Comment not found/);
+   });
+  });
   await t.test('granular rating saves merge, missing values clear, and separate reviewers remain separate',async()=>{
    await as('service_role',async()=>{
     const save=(owner,patch,reviewed=null)=>pg.query('select pmx_write_review($1,$2,$3::jsonb,$4,$5)',[owner,'case1',JSON.stringify(patch),reviewed,'revision-one']);
@@ -73,8 +94,8 @@ test('source context is verified against the assigned passage, including UTF-16 
 });
 
 test('typed reviewer access does not expose a directory or coordinator routes',()=>{
- for(const [path,method]of [['/api/reviewer-access','POST'],['/api/reviewer-logout','POST'],['/api/session','GET'],['/api/cases/case_1','GET'],['/api/cases/case_1/papers/'+ 'a'.repeat(32),'GET'],['/api/reviews','PATCH'],['/api/comments','POST']])assert.doesNotThrow(()=>assertReviewerRoute(path,method));
- for(const [path,method]of [['/api/reviewers','GET'],['/api/admin/reviewers','GET'],['/api/admin/results','GET'],['/api/admin/assignments/expert1','PUT'],['/api/session?preview=reviewer-demo','GET'],['/api/reviewer-access','GET'],['https://evil.invalid/api/session','GET'],['/api/cases/../admin/results','GET'],['/api/cases/case_1/papers/../../secret','GET'],['/api/cases/case_1/papers/'+ 'a'.repeat(32),'POST']])assert.throws(()=>assertReviewerRoute(path,method),/not available/);
+ for(const [path,method]of [['/api/reviewer-access','POST'],['/api/reviewer-logout','POST'],['/api/session','GET'],['/api/cases/case_1','GET'],['/api/cases/case_1/papers/'+ 'a'.repeat(32),'GET'],['/api/reviews','PATCH'],['/api/comments/11111111-1111-4111-8111-111111111111','PATCH'],['/api/comments','POST']])assert.doesNotThrow(()=>assertReviewerRoute(path,method));
+ for(const [path,method]of [['/api/reviewers','GET'],['/api/admin/reviewers','GET'],['/api/admin/results','GET'],['/api/admin/assignments/expert1','PUT'],['/api/session?preview=reviewer-demo','GET'],['/api/reviewer-access','GET'],['/api/comments/invalid','PATCH'],['/api/comments/11111111-1111-4111-8111-111111111111','PUT'],['https://evil.invalid/api/session','GET'],['/api/cases/../admin/results','GET'],['/api/cases/case_1/papers/../../secret','GET'],['/api/cases/case_1/papers/'+ 'a'.repeat(32),'POST']])assert.throws(()=>assertReviewerRoute(path,method),/not available/);
 });
 
 test('assignment validation allows three cases, rejects four and duplicate IDs',()=>{

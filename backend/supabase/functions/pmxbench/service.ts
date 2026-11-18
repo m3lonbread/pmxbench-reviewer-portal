@@ -8,7 +8,7 @@ const secrets=JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS')??'{}');
 const key=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')??secrets.default;
 const db=createClient(Deno.env.get('SUPABASE_URL')!,key,{auth:{persistSession:false,autoRefreshToken:false}});
 const personColumns='id,name,email,login_email,affiliation,status,modeling_area,research_focus,notes,source,source_row,outreach_status,updated_at';
-async function query(request:PromiseLike<{data:any;error:any}>):Promise<any>{const {data,error}=await request;if(error){if(error.code==='23505')throw new ApiError(409,'That sign-in email or record already exists.');if(['23503','23514','P0001'].includes(error.code))throw new ApiError(400,error.code==='P0001'?error.message:'Invalid expert or case details.');throw new ApiError(500,'Unable to complete this request. Please retry.');}return data;}
+async function query(request:PromiseLike<{data:any;error:any}>):Promise<any>{const {data,error}=await request;if(error){if(error.code==='P0002')throw new ApiError(404,error.message);if(error.code==='PT409')throw new ApiError(409,error.message);if(error.code==='23505')throw new ApiError(409,'That sign-in email or record already exists.');if(['23503','23514','P0001'].includes(error.code))throw new ApiError(400,error.code==='P0001'?error.message:'Invalid expert or case details.');throw new ApiError(500,'Unable to complete this request. Please retry.');}return data;}
 async function collect(build:()=>any){const rows:any[]=[];for(let offset=0;;offset+=1000){const page=await query(build().range(offset,offset+999));rows.push(...page);if(page.length<1000)return rows;}}
 async function actor(token:string){
  const {data:{user},error}=await db.auth.getUser(token);
@@ -36,12 +36,13 @@ async function scope(a:Actor,preview:string|null){
 }
 type Scope=Awaited<ReturnType<typeof scope>>;
 async function packet(s:Scope,id:string){if(!s.cases.some((c:any)=>c.id===id))throw new ApiError(404,'This case is not assigned to you.');const row=await query(db.from('pmx_cases').select('packet').eq('id',id).maybeSingle());if(!row)throw new ApiError(404,'Case not found.');const c=literatureView(caseView(row.packet)),sourceId=c.testSourceCaseId??c.id;const [papers,guide]=await Promise.all([query(db.from('pmx_literature').select('meta,is_key_source').eq('case_id',sourceId).order('paper_id')),query(db.from('pmx_material_guides').select('payload').eq('case_id',sourceId).maybeSingle())]);return {...c,...(guide?{materialsGuide:{revision:guide.payload.revision,objective:guide.payload.objective,scope:guide.payload.scope},materials:c.materials.map((m:any)=>({...m,guide:guide.payload.files[m.name]}))}:{}),literature:papers.filter((p:any)=>p.is_key_source).map((p:any)=>p.meta).sort((a:any,b:any)=>(a.sourceOrder??0)-(b.sourceOrder??0)),legacyLiterature:papers.filter((p:any)=>!p.is_key_source).map((p:any)=>p.meta)};}
+function commentView(c:any){return {id:c.id,text:c.text,quotes:c.quotes,createdAt:c.created_at,updatedAt:c.updated_at??undefined,version:c.edit_version??0,reviewer:c.reviewer_name,identityMethod:c.identity_method};}
 async function state(s:Scope){
  if(s.samplePreview)return {ratings:{},reviewed:[],feedback:[]};
  const [reviews,comments]=await Promise.all([collect(()=>db.from('pmx_reviews').select('*').eq('reviewer_id',s.reviewerId).order('case_id')),collect(()=>db.from('pmx_comments').select('*').eq('reviewer_id',s.reviewerId).order('created_at').order('id'))]);
  const ids=s.cases.map((c:any)=>c.id),ratings:Record<string,any>={},reviewed:string[]=[];
  for(const r of reviews){if(!ids.includes(r.case_id))continue;ratings[r.case_id]={values:{},difficultyFeedback:'',improvements:'',recommendation:'',...r.rating,updatedAt:r.updated_at};if(r.reviewed)reviewed.push(r.case_id);}
- return {ratings,reviewed,feedback:comments.filter((c:any)=>!c.archived_at&&(!c.quotes.length||c.quotes.every((q:any)=>ids.includes(q.caseId)))).map((c:any)=>({id:c.id,text:c.text,quotes:c.quotes,createdAt:c.created_at,reviewer:c.reviewer_name,identityMethod:c.identity_method}))};
+ return {ratings,reviewed,feedback:comments.filter((c:any)=>!c.archived_at&&(!c.quotes.length||c.quotes.every((q:any)=>ids.includes(q.caseId)))).map(commentView)};
 }
 async function route(a:Actor,path:string,method:string,data:Record<string,any>){
  if(!path.startsWith('/api/'))throw new ApiError(404,'Not found.');
@@ -70,7 +71,14 @@ async function route(a:Actor,path:string,method:string,data:Record<string,any>){
   const quotes=await normalizeQuotes(data.quotes,s.cases.map((c:any)=>c.id),id=>packet(s,id));
   await query(db.from('pmx_comments').upsert({id:data.id,reviewer_id:s.reviewerId,text:data.text.trim(),quotes,reviewer_name:s.name,identity_method:a.identityMethod},{onConflict:'id',ignoreDuplicates:true}));
   const row=await query(db.from('pmx_comments').select('*').eq('id',data.id).single());if(row.reviewer_id!==s.reviewerId)throw new ApiError(409,'Please retry this comment.');
-  return {id:row.id,text:row.text,quotes:row.quotes,createdAt:row.created_at,reviewer:row.reviewer_name,identityMethod:row.identity_method};
+  return commentView(row);
+ }
+ const commentMatch=p.match(/^\/api\/comments\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/i);
+ if(commentMatch&&method==='PATCH'){
+  requireWrite(s);
+  if(Object.keys(data).some(k=>!['text','version'].includes(k))||typeof data.text!=='string'||!data.text.trim()||data.text.length>20000||!Number.isInteger(data.version)||data.version<0)throw new ApiError(400,'Enter a comment of up to 20,000 characters.');
+  const row=await query(db.rpc('pmx_edit_comment',{p_reviewer:s.reviewerId,p_id:commentMatch[1],p_text:data.text,p_expected_version:data.version,p_visible_cases:s.cases.map((c:any)=>c.id)}));
+  return commentView(row);
  }
  if(p.startsWith('/api/admin/')){
   requireCoordinator(a);if(s.preview)throw new ApiError(403,'Return to the coordinator workspace to manage experts.');

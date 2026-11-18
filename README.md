@@ -33,6 +33,7 @@ Create a Supabase Free project owned by the host. Apply the SQL migrations in fi
 5. `backend/supabase/migrations/202611130005_archive_feedback.sql`
 6. `backend/supabase/migrations/202611130006_source_literature.sql`
 7. `backend/supabase/migrations/202611150007_case_material_guides.sql`
+8. `backend/supabase/migrations/202611170008_edit_comments.sql`
 
 Prepare private initial data locally:
 
@@ -131,7 +132,7 @@ Descriptions are overlays on the stored scientific packets. Original prompt/rubr
 
 Reviewer orientation and rubric presentation:
 
-The five-step Review guide opens automatically for each new reviewer login. Dismissing it is remembered for that login in sessionStorage, so refreshing does not reopen it. Reviewers can reopen it with Review guide; coordinators and read-only previews do not receive the automatic prompt. The guide covers navigation, comparison and literature, quick ratings, source-linked/general comments, and saving/completion.
+The nine-step guided Review guide opens automatically for each new reviewer login. Dismissing it is remembered for that login in sessionStorage, so refreshing does not reopen it. Reviewers can reopen it with Review guide; coordinators and read-only previews do not receive the automatic prompt. The guide covers navigation, comparison and literature, quick ratings, source-linked/general comments, and saving/completion.
 
 Reviewer rubrics display all scored criteria and required pass/fail gates, while supplementary notes after the criteria are omitted. The original stored packet, block identifiers, and saved quotations remain unchanged. A historical quotation of an omitted appendix opens the current rubric with an explanation.
 
@@ -141,3 +142,10 @@ Streamlined reviewer interface:
 The first case section is Review instructions, explaining the benchmark goal and the requested expert assessment. File materials display short summaries that preserve the source text without the field catalog or lengthy detail blocks. A previously saved source link can still reveal its cited passage. The top-level tabs are Materials and Side by Side Tool; case ratings and key source papers remain available within each case.
 
 Selecting a passage now shows an Add comment popup. Highlighting alone does not change the chat. Choosing Add comment attaches the selected text and its case/subsection source, then focuses the comment field. General feedback remains available without a quotation. The tutorial describes this opt-in flow.
+
+
+Guided walkthrough and comment revisions:
+
+Review guide now opens a welcome dialog, then walks through the actual workspace: assigned cases, prompt, supporting files/papers, rubric, side-by-side comparison, ratings, source-linked feedback, general feedback/editing, and completion. It highlights each tool and supports Back, Next, minimize, and exit. Starting the tour navigates the interface without submitting feedback, selecting ratings, or marking a case reviewed. It opens automatically for reviewer logins and can be reopened from Review guide or Start guided walkthrough within the instructions.
+
+Reviewers can Edit a sent comment, then Save changes or Cancel. Updates preserve quotations, source revisions, reviewer identity, and original creation time. An Edited label indicates saved revisions. Server checks enforce ownership, current source visibility, and the expected edit version; stale edits return a non-retryable PT409 conflict. Private revision history is stored in pmx_comment_edits, inaccessible to anonymous/authenticated direct clients. Coordinator JSON exports include the latest text and edit metadata; test-review exclusions are unchanged. Deploy both Edge Functions after applying migration 202611170008.

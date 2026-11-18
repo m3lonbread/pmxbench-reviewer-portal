@@ -2,9 +2,11 @@ import type {RubricBlock} from '../../app/review-data';
 
 const isGateHeading=(b:RubricBlock)=>/^(?:(?:required|mandatory)\s+)?pass[\s/–—-]*fail\s+gates?\s*$/i.test(b.text?.trim()??'');
 const isGateTable=(b:RubricBlock)=>/^gate$/i.test(b.rows?.[0]?.[0]?.trim()??'');
+const isRubricSummary=(b:RubricBlock)=>/^\d{1,2}\s+[A-Za-z]+\s+\d{4}\s+Five dimensions\s+100 points\.?$/i.test(b.text?.trim()??'');
 
 // Keep original block IDs and text so existing quotations retain their sources.
 export function reviewerRubric(blocks:RubricBlock[]):RubricBlock[]{
+ blocks=blocks.filter(b=>!isRubricSummary(b));
  const lastCriterion=blocks.reduce((last,b,i)=>b.rows?.some(row=>row.length===4)?i:last,-1);
  if(lastCriterion<0)return blocks;
  const result=blocks.slice(0,lastCriterion+1);

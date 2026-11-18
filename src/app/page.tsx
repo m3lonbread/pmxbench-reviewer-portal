@@ -89,6 +89,7 @@ export function ReviewWorkspace({session,previewQuery,onRefresh,onPreview,onExit
   setTourExploring(true);setNavOpen(false);setChatOpen(false);
   const c=cases.find(c=>c.id===activeCase)??firstCase;
   if(target==='cases'){setView('document');setNavOpen(getComputedStyle(document.querySelector('.mobile-toolbar')!).display!=='none');return '.sidebar';}
+  if(target==='instructions'){setView('document');setPendingJump(null);return '.workspace-instructions';}
   if(target==='compare'){setView('compare');setLeftSection(1);setRightSection(3);return '.comparison-columns';}
   if(target==='general-comment'){setChatOpen(true);setChatTab('conversation');return '.chat-composer';}
   if(target==='finish'){setView('document');setCaseOpen(prev=>({...prev,[c.id]:true}));setPendingJump(null);void loadCase(c.id).catch(()=>{});return `[id="${c.id}"] .case-end`;}

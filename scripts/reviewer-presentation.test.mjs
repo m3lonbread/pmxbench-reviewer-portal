@@ -34,7 +34,7 @@ test('concise material summaries retain canonical quotation offsets and older pa
 });
 
 test('the guided review covers the complete workflow without marking or submitting reviews',()=>{
- assert.deepEqual(walkthroughSteps.map(s=>s.target),['cases','prompt','materials','rubric','compare','ratings','quoted-comment','general-comment','finish']);
+ assert.deepEqual(walkthroughSteps.map(s=>s.target),['cases','instructions','prompt','materials','rubric','compare','ratings','quoted-comment','general-comment','finish']);
  assert.ok(walkthroughSteps.find(s=>s.target==='general-comment').body.includes('Edit'));
 });
 

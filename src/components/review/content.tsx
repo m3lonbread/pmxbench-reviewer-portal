@@ -1,7 +1,7 @@
 
 'use client';
 import {reviewerRubric} from './rubric-structure';
-import {materialSummary,materialPassage} from './material-summary';
+import {reviewMaterialSummary,materialPassage,materialGroup,materialOrder} from './material-summary';
 import type {CaseDetail,ReviewCase,Section} from '../../app/review-data';
 export type Source={caseId:string;caseNumber:number;caseTitle:string;sectionId:string;sectionNumber:string;sectionTitle:string;contentType:string;blockId:string;start:number;end:number;text:string;revision:string;fileName?:string};
 export type Flash={blockId:string;start:number;end:number}|null;
@@ -19,12 +19,14 @@ export function Rubric({c,flash,notify}:{c:CaseDetail;flash:Flash;notify:(s:stri
 }
 
 export function MaterialsDescription({c,flash,reference,onDismissReference}:{c:CaseDetail;flash:Flash;reference?:Source|null;onDismissReference?:()=>void}){
- const section=c.sections[2],revision=c.materialsGuide?.revision;
+ const section=c.sections[2];
  const ref=reference?.caseId===c.id&&reference.sectionId===section.id?reference:null;
- const visibleIds=new Set(c.materials.map(m=>`${c.id}-material-${m.id}${materialSummary(m).suffix}`));
+ const visibleIds=new Set(c.materials.map(m=>`${c.id}-material-${m.id}${reviewMaterialSummary(c,m).suffix}`));
  const historical=ref&&!visibleIds.has(ref.blockId)?materialPassage(c,ref.blockId):null;
  return <div className="materials-description concise-materials"><p className="section-intro">Files supplied to the model builder. These summaries explain what each file contributes to the task.</p>
-  {c.materials.map(m=>{const summary=materialSummary(m),id=`${c.id}-material-${m.id}${summary.suffix}`,expanded=ref?.blockId===id&&ref.end>summary.text.length;return <div className="material-description" key={m.id}><span className="file-extension">{m.format}</span><div className="material-content"><h4>{m.name}</h4><SourceText c={c} s={section} id={id} text={expanded?summary.full:summary.text} kind={`Material description · ${m.name}`} flash={flash} revision={m.guide?revision:undefined}/>{summary.truncated&&!expanded&&<span className="summary-ellipsis" aria-hidden="true">…</span>}{expanded&&<button className="reference-dismiss" onClick={onDismissReference}>Back to summaries</button>}</div></div>;})}
+  {(['Operational','Data'] as const).map(group=><section className="material-group" key={group}><h4 className="material-group-title">{group}</h4><p className="material-group-intro">{group==='Operational'?'Definitions, modeling rules, and requested predictions.':'Measurements, dosing, subject context, and scientific references.'}</p>
+  {c.materials.filter(m=>materialGroup(m.name)===group).sort((a,b)=>materialOrder(a.name)-materialOrder(b.name)).map(m=>{const summary=reviewMaterialSummary(c,m),id=`${c.id}-material-${m.id}${summary.suffix}`,expanded=ref?.blockId===id&&ref.end>summary.text.length;return <div className="material-description" key={m.id}><span className="file-extension">{m.format}</span><div className="material-content"><h4>{m.name}</h4><SourceText c={c} s={section} id={id} text={expanded?summary.full:summary.text} kind={`Material description · ${m.name}`} flash={flash} revision={summary.revision}/>{summary.truncated&&!expanded&&<span className="summary-ellipsis" aria-hidden="true">…</span>}{expanded&&<button className="reference-dismiss" onClick={onDismissReference}>Back to summaries</button>}</div></div>;})}
+  </section>)}
   {historical&&ref&&<aside className="referenced-material"><div><strong>Previously quoted passage</strong><button className="reference-dismiss" onClick={onDismissReference}>Back to summaries</button></div><SourceText c={c} s={section} id={ref.blockId} text={historical.text} kind={ref.contentType} flash={flash} revision={historical.revision}/></aside>}
  </div>;
 }

@@ -12,7 +12,7 @@ Reviewers type their name and reply email; the server matches both against a pri
 
 There is no public reviewer directory or email list. Old reviewer IDs alone cannot open a review. The server issues a random eight-hour session token after a successful match, stores only its SHA-256 hash, and keeps the browser token in sessionStorage. Email addresses are not saved in browser identity storage. Each request rechecks profile activation, current email, and assignments. Sign-out revokes the token; expiration, an email change, or deactivation invalidates access. Matching attempts are limited to ten per normalized email in fifteen minutes; no attempt log stores the email itself.
 
-Reviewers can receive up to three cases; the current matching plan targets two or three per interested expert. Complete prompts and grading rubrics are included, with material descriptions and source-paper PDFs. Datasets, other staged inputs, and summary cards are not provided. Quotations retain their exact case, subsection, passage, and source revision. General comments and six categorical ratings are supported.
+Reviewers can receive up to three cases; the current matching plan targets two or three per interested expert. Complete prompts and grading rubrics are included, with material descriptions and source-paper PDFs. Datasets, other staged inputs, and summary cards are not provided. Quotations retain their exact case, subsection, passage, and source revision. General comments and five categorical ratings are supported. Historical Materials support answers remain stored but are no longer requested.
 
 The reviewer service accepts only access, logout, session, assigned-case, assigned-paper, rating, and comment requests. It rejects coordinator endpoints and all preview parameters. Every matched profile must remain Verified and assigned before data is returned or saved. Direct database access is denied to browser clients, including the public key.
 
@@ -117,7 +117,7 @@ Test profiles use `source: Website test fixture`. Test packets use `isTest: true
 
 ## Key source literature and material descriptions
 
-The Key literature tab lists curator-designated primary reference-model papers from `mechanistic_pkpd_benchmark/case_summary_cards_source/manifest.json`, matched to the official cases. The full participant background archives are described in the material guide. Summary-card PNGs and raw staged inputs are not served. Historical paper references remain resolvable when opening saved feedback.
+The Key source literature section lists curator-designated primary reference-model papers from `mechanistic_pkpd_benchmark/case_summary_cards_source/manifest.json`, matched to the official cases. The full participant background archives are described in the material guide. Summary-card PNGs and raw staged inputs are not served. Historical paper references remain resolvable when opening saved feedback.
 
 The PDF.js reader supports previews, page navigation, zoom, selectable text, new-tab reading, and downloads. Selecting a paper title attaches its source reference to feedback. Text selection inside the PDF reader does not attach excerpts automatically.
 
@@ -126,6 +126,8 @@ PDFs and case-specific descriptions remain private backend content. `pmx_literat
 After applying all migrations and the main case seed, run `python3 scripts/prepare-literature.py` in a Python environment with `pypdf`. It verifies the curator manifest hashes and prepares ignored `backend/private/key-literature-seed.sql`, `key-literature-manifest.json`, and `key-literature-pdfs/`. Apply the seed and upload those PDFs to the private bucket. Re-running the seed preserves background source records and marks the designated primary sources; it does not delete old PDFs or feedback.
 
 Run `python3 scripts/prepare-material-guides.py` against the owner-supplied current `three_tier` inputs. It creates descriptive profiles for all staged files: row/column counts, roles, endpoints and units, observation granularity, time domains, event handling, required artifacts, missingness, and field definitions. It emits no participant-level observation rows, executable model files, or raw input downloads. Apply the six ignored `backend/private/material-guides-part-*.sql` files in order.
+
+The current concise descriptions and case goals are supplied through the owner-maintained private `pmx_material_guides.payload.review` overlay (`revision`, `goal`, and filename-keyed `materials`). Apply the owner-supplied overlay import after preparing the detailed guides; the detailed generator alone does not create the current review briefs. Never include these private payloads in the static build.
 
 Descriptions are overlays on the stored scientific packets. Original prompt/rubric text, legacy material source blocks, and saved quotations stay intact. New description blocks carry a separate content revision, verified by the server when a comment is submitted. Source navigation expands collapsed field guides before highlighting the cited passage. Store all generated case data and PDFs outside Git and the public build.
 
@@ -139,7 +141,7 @@ Reviewer rubrics display all scored criteria and required pass/fail gates, while
 
 Streamlined reviewer interface:
 
-The first case section is Review instructions, explaining the benchmark goal and the requested expert assessment. File materials display short summaries that preserve the source text without the field catalog or lengthy detail blocks. A previously saved source link can still reveal its cited passage. The top-level tabs are Materials and Side by Side Tool; case ratings and key source papers remain available within each case.
+Review instructions appear once above the case list, explaining the benchmark goal and requested expert assessment. Each case begins with a one-sentence Case goal before the participant prompt. Material descriptions are grouped into Operational (definitions, model construction rules, prediction targets) and Data (observations, treatment events, context, and literature), with concise, case-specific descriptions and no row or column counts. A previously saved source link can still reveal its cited passage. The top-level tabs are Materials and Side by Side Tool; case ratings and key source papers remain available within each case.
 
 Selecting a passage now shows an Add comment popup. Highlighting alone does not change the chat. Choosing Add comment attaches the selected text and its case/subsection source, then focuses the comment field. General feedback remains available without a quotation. The tutorial describes this opt-in flow.
 

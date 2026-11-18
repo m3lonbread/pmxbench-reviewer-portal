@@ -1,22 +1,21 @@
-import version from './packet-version.json';
+import version from './packet-version.json' with {type:'json'};
 export type Section = {id:string;number:string;title:string;type:string};
 export type ReviewCase = {isTest?:boolean;testSourceCaseNumber?:number;testSourceCaseId?:string;testSourceRevision?:string;id:string;slug:string;number:number;title:string;track:string;trackCode:string;subtitle:string;revision:string;sourceRoot:string;fileCount:number;criterionCount:number;sections:Section[]};
 export type MaterialGuide={summary:string;rows?:number;columns?:number;blocks:{id:string;label:string;text:string}[];endpointCoverage?:string;fields:{id:string;name:string;text:string;defined:boolean;blankCells:number}[]};
 export type MaterialDescription={id:string;name:string;description:string;format:string;guide?:MaterialGuide};
 export type RubricBlock = {id:string;text?:string;style?:string;rows?:string[][]};
 export type LiteraturePaper={id:string;title:string;fileName:string;bytes:number;pages:number;sha256:string;keySource?:boolean;sourceOrder?:number};
-export type CaseDetail = ReviewCase & {prompt:string;rubric:RubricBlock[];materials:MaterialDescription[];literature:LiteraturePaper[];legacyLiterature?:LiteraturePaper[];materialsGuide?:{revision:string;objective:string;scope:string}};
+export type CaseDetail = ReviewCase & {prompt:string;rubric:RubricBlock[];materials:MaterialDescription[];literature:LiteraturePaper[];legacyLiterature?:LiteraturePaper[];reviewGuide?:{revision:string;goal:string;materials:Record<string,string>};materialsGuide?:{revision:string;objective:string;scope:string}};
 export const packetRevision=version.revision;
 export const ratingFields=[
  {key:'scientificSoundness',label:'Scientific soundness',hint:'Are the scientific assumptions and methods sound?',options:['Adequate','Minor concerns','Major concerns','Unable to assess']},
  {key:'writingClarity',label:'Writing clarity',hint:'Is the task clear, precise, and understandable?',options:['Adequate','Minor concerns','Major concerns','Unable to assess']},
- {key:'materialsSupport',label:'Materials support',hint:'Are the described data and literature appropriate for the task?',options:['Adequate','Minor concerns','Major concerns','Unable to assess']},
  {key:'taskRubricAlignment',label:'Task / rubric alignment',hint:'Does the rubric fairly assess what the task requests?',options:['Adequate','Minor concerns','Major concerns','Unable to assess']},
  {key:'difficulty',label:'Difficulty',hint:'How demanding is this case overall?',options:['Low','Moderate','High','Very high','Unable to assess']},
  {key:'modelingExpertise',label:'Modeling expertise required',hint:'Approximate hands-on modeling experience needed to complete this case.',options:['Foundational','Intermediate','Advanced','Specialist','Unable to assess']}
 ] as const;
 export type RatingKey=typeof ratingFields[number]['key'];
-export type CaseRating={values:Partial<Record<RatingKey,string>>;difficultyFeedback:string;improvements:string;recommendation:string;updatedAt:string};
+export type CaseRating={values:Partial<Record<RatingKey|'materialsSupport',string>>;difficultyFeedback:string;improvements:string;recommendation:string;updatedAt:string};
 export const blankRating=():CaseRating=>({values:{},difficultyFeedback:'',improvements:'',recommendation:'',updatedAt:''});
 
 export const expertiseScaleVersion='hands-on-experience-v1';

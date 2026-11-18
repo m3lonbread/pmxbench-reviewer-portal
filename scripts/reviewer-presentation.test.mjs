@@ -1,8 +1,9 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {reviewerRubric,omittedRubricPassage} from '../src/components/review/rubric-structure.ts';
 import {shouldShowTutorial} from '../src/components/review/tutorial-state.ts';
+import {ratingFields} from '../src/app/review-data.ts';
 import {walkthroughSteps} from '../src/components/review/tutorial-steps.ts';
-import {materialSummary,materialPassage} from '../src/components/review/material-summary.ts';
+import {materialSummary,materialPassage,reviewMaterialSummary,materialGroup,materialOrder} from '../src/components/review/material-summary.ts';
 test('review rubrics keep scored content and all gate rows while omitting supplementary notes',()=>{
  const scored={id:'criteria',rows:[['Criterion','Points','Assessment','Evidence'],['C5.1','10','Scored requirement','Full evidence']]};
  const gateHeading={id:'gates-heading',style:'Heading1',text:'Required pass fail gates'};
@@ -35,4 +36,15 @@ test('concise material summaries retain canonical quotation offsets and older pa
 test('the guided review covers the complete workflow without marking or submitting reviews',()=>{
  assert.deepEqual(walkthroughSteps.map(s=>s.target),['cases','prompt','materials','rubric','compare','ratings','quoted-comment','general-comment','finish']);
  assert.ok(walkthroughSteps.find(s=>s.target==='general-comment').body.includes('Edit'));
+});
+
+test('operational/data groups use specific source briefs and five active rating categories',()=>{
+ assert.deepEqual(ratingFields.map(f=>f.key),['scientificSoundness','writingClarity','taskRubricAlignment','difficulty','modelingExpertise']);
+ for(const n of ['input_variable_dictionary.csv','model_construction_contract.json','prediction_targets.csv'])assert.equal(materialGroup(n),'Operational');
+ for(const n of ['observed_data.csv','treatment_events.csv','literature.zip','subject_covariates.csv'])assert.equal(materialGroup(n),'Data');
+ assert.ok(materialOrder('observed_data.csv')<materialOrder('literature.zip'));
+ const m={id:'obs',name:'observed_data.csv',description:'Original description',guide:{summary:'100 rows × 8 columns'}};
+ const c={id:'case1',materials:[m],reviewGuide:{revision:'brief-v1',goal:'How does treatment affect the response?',materials:{'observed_data.csv':'Concentration and response measurements linked to dosing and sampling time.'}}};
+ const b=reviewMaterialSummary(c,m);assert.equal(b.suffix,'-brief');assert.equal(b.revision,'brief-v1');assert.ok(!/rows|columns/.test(b.text));
+ assert.deepEqual(materialPassage(c,'case1-material-obs-brief'),{text:b.text,revision:'brief-v1'});
 });

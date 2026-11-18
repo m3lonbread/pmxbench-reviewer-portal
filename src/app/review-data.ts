@@ -5,7 +5,7 @@ export type MaterialGuide={summary:string;rows?:number;columns?:number;blocks:{i
 export type MaterialDescription={id:string;name:string;description:string;format:string;guide?:MaterialGuide};
 export type RubricBlock = {id:string;text?:string;style?:string;rows?:string[][]};
 export type LiteraturePaper={id:string;title:string;fileName:string;bytes:number;pages:number;sha256:string;keySource?:boolean;sourceOrder?:number};
-export type CaseDetail = ReviewCase & {prompt:string;rubric:RubricBlock[];materials:MaterialDescription[];literature:LiteraturePaper[];legacyLiterature?:LiteraturePaper[];reviewGuide?:{revision:string;goal:string;materials:Record<string,string>};materialsGuide?:{revision:string;objective:string;scope:string}};
+export type CaseDetail = ReviewCase & {prompt:string;rubric:RubricBlock[];materials:MaterialDescription[];literature:LiteraturePaper[];legacyLiterature?:LiteraturePaper[];reviewGoal?:{text:string;revision:string};reviewGuide?:{revision:string;goal:string;materials:Record<string,string>};materialsGuide?:{revision:string;objective:string;scope:string}};
 export const packetRevision=version.revision;
 export const ratingFields=[
  {key:'scientificSoundness',label:'Scientific soundness',hint:'Are the scientific assumptions and methods sound?',options:['Adequate','Minor concerns','Major concerns','Unable to assess']},

@@ -8,6 +8,7 @@ import {Rubric,SourceText,MaterialsDescription,type Flash,type Source} from '../
 import {ReviewerTutorial} from '../components/review/tutorial';
 import {EditableComment} from '../components/review/editable-comment';
 import {ReviewInstructions} from '../components/review/instructions';
+import {CaseGoal} from '../components/review/case-goal';
 import type {TutorialTarget} from '../components/review/tutorial-steps';
 import {useSelectionComment} from '../components/review/selection-popup';
 import {readTutorialVisit,rememberTutorialVisit,shouldShowTutorial} from '../components/review/tutorial-state';
@@ -104,7 +105,7 @@ export function ReviewWorkspace({session,previewQuery,onRefresh,onPreview,onExit
  const commented=(id:string)=>feedback.filter(f=>f.quotes.some(q=>q.caseId===id)).length;
  const ratedCases=cases.filter(c=>ratingCount(ratings[c.id])>0).length;
  function sectionTitle(s:Section,index:number){return index===0?'Case goal':s.title;}
- function overview(c:CaseDetail){return <div className="case-goal"><SourceText c={c} s={c.sections[0]} id={c.reviewGuide?`${c.id}-review-goal`:`${c.id}-overview`} text={c.reviewGuide?.goal??c.subtitle} kind="Case goal" revision={c.reviewGuide?.revision} flash={flash}/>{c.reviewGuide&&focusedSource?.blockId===`${c.id}-overview`&&<aside className="referenced-material"><strong>Previously quoted case description</strong><SourceText c={c} s={c.sections[0]} id={`${c.id}-overview`} text={c.subtitle} flash={flash}/></aside>}</div>;}
+ function overview(c:CaseDetail){return <CaseGoal c={c} flash={flash} reference={focusedSource}/>;}
  function sectionBody(c:CaseDetail,index:number){const s=c.sections[index];if(index===0)return overview(c);if(index===1)return <div className="full-prompt"><div className="document-toolbar"><span>Complete participant prompt</span></div>{c.prompt.split('\n\n').map((text,i)=><SourceText key={i} c={c} s={s} id={`${c.id}-prompt-${i}`} text={text} flash={flash}/>)}</div>;if(index===2)return <MaterialsDescription c={c} flash={flash} reference={focusedSource} onDismissReference={()=>{setFocusedSource(null);setFlash(null);}}/>;if(index===5)return <SourceLiterature c={c} flash={flash} previewQuery={previewQuery} focusedPaperId={focusedPaperId}/>;if(index===3)return <Rubric c={c} flash={flash} notify={notify}/>;return <RatingForm c={c} value={ratings[c.id]} onChange={updateRating} disabled={session.readOnly}/>;}
  function loading(c:ReviewCase){return <div className="packet-loading">{loadErrors[c.id]?<><span>{loadErrors[c.id]}</span><button onClick={()=>loadCase(c.id).catch(()=>{})}>Retry loading packet</button></>:<><LoaderCircle size={16} className="spin"/>Loading official case materials…</>}</div>;}
  const onQuoteJump=(q:Source)=>jumpTo(q.caseId,q.sectionId,q);

@@ -27,8 +27,11 @@ export function reviewerCredentials(input:unknown){
  if(!/^\S+@\S+\.\S+$/.test(email))throw new ApiError(403,reviewerAccessError);
  return {name:data.name.trim(),email};
 }
-export function assertReviewerMatch(person:{name:string;status:string;login_email:string|null}|null,credentials:{name:string;email:string}){
- if(!person||person.status!=='verified'||!person.login_email||person.login_email.trim().toLowerCase()!==credentials.email||!reviewerNameMatches(credentials.name,person.name))throw new ApiError(403,reviewerAccessError);
+export function reviewerEmailMatches(person:{login_email:string|null;login_email_aliases?:string[]},email:string){
+ return Boolean(person.login_email)&&[person.login_email,...person.login_email_aliases??[]].some(allowed=>allowed?.trim().toLowerCase()===email.trim().toLowerCase());
+}
+export function assertReviewerMatch(person:{name:string;status:string;login_email:string|null;login_email_aliases?:string[]}|null,credentials:{name:string;email:string}){
+ if(!person||person.status!=='verified'||!reviewerEmailMatches(person,credentials.email)||!reviewerNameMatches(credentials.name,person.name))throw new ApiError(403,reviewerAccessError);
 }
 export async function hashReviewerValue(value:string){return [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)))].map(v=>v.toString(16).padStart(2,'0')).join('');}
 export function newReviewerToken(){return [...crypto.getRandomValues(new Uint8Array(32))].map(v=>v.toString(16).padStart(2,'0')).join('');}

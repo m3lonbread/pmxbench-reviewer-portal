@@ -16,6 +16,7 @@ test('PostgreSQL keeps private data inaccessible and applies review changes atom
   await pg.exec(await readFile(new URL('../backend/supabase/migrations/202611130006_source_literature.sql',import.meta.url),'utf8'));
   await pg.exec(await readFile(new URL('../backend/supabase/migrations/202611150007_case_material_guides.sql',import.meta.url),'utf8'));
   await pg.exec(await readFile(new URL('../backend/supabase/migrations/202611170008_edit_comments.sql',import.meta.url),'utf8'));
+  await pg.exec(await readFile(new URL('../backend/supabase/migrations/202611180009_reviewer_email_aliases.sql',import.meta.url),'utf8'));
   for(const id of ['case1','case2','case3','case4'])await pg.query('insert into pmx_cases(id,meta,packet) values($1,$2::jsonb,$3::jsonb)',[id,JSON.stringify({id}),JSON.stringify({id,prompt:'private prompt'})]);
   async function as(role,run){await pg.exec('set role '+role);try{return await run();}finally{await pg.exec('reset role');}}
   await t.test('anonymous and authenticated clients cannot read private tables or invoke privileged RPCs',async()=>{
@@ -48,6 +49,16 @@ test('PostgreSQL keeps private data inaccessible and applies review changes atom
     await pg.query("update pmx_reviewer_access_attempts set window_started_at=now()-interval '16 minutes' where bucket_hash=repeat('a',64)");
     assert.equal((await pg.query("select pmx_reserve_reviewer_attempt(repeat('a',64)) allowed")).rows[0].allowed,true);
    });
+  });
+  await t.test('alternate reviewer emails are explicit, normalized and private',async()=>{
+   await as('service_role',async()=>{
+    const created=await pg.query('select pmx_save_expert(null,$1::jsonb,$2) result',[JSON.stringify({name:'Alias reviewer',loginEmail:'primary@example.test',status:'verified',caseIds:['case1']}),'coordinator@example.test']),id=created.rows[0].result.id;
+    assert.deepEqual((await pg.query('select login_email_aliases from pmx_experts where id=$1',[id])).rows[0].login_email_aliases,[]);
+    await pg.query('update pmx_experts set login_email_aliases=$2 where id=$1',[id,['alternate@example.test']]);
+    assert.equal((await pg.query('select login_email from pmx_experts where id=$1',[id])).rows[0].login_email,'primary@example.test');
+    for(const aliases of [[' ALTERNATE@example.test'],['alternate@example.test','alternate@example.test'],['invalid'],[null]])await assert.rejects(pg.query('update pmx_experts set login_email_aliases=$2 where id=$1',[id,aliases]),/email_aliases_valid/);
+   });
+   for(const role of ['anon','authenticated'])await as(role,()=>assert.rejects(pg.query("select login_email_aliases from pmx_experts"),/permission denied/));
   });
   await t.test('comment edits enforce ownership, source visibility and optimistic versions while preserving quotations',async()=>{
    const id='11111111-1111-4111-8111-111111111111',quotes=[{caseId:'case1',blockId:'source',text:'Original quotation'}];

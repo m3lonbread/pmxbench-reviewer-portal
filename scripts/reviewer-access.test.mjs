@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {normalizeQuotes} from '../backend/supabase/functions/pmxbench/domain.ts';
-import {reviewerCredentials,reviewerNameMatches,assertReviewerMatch,newReviewerToken,hashReviewerValue} from '../backend/supabase/functions/pmxbench/picker.ts';
+import {reviewerCredentials,reviewerNameMatches,assertReviewerMatch,newReviewerToken,hashReviewerValue,reviewerEmailMatches} from '../backend/supabase/functions/pmxbench/picker.ts';
 test('typed details accept harmless formatting, honorifics, and recorded nickname variants without accepting another name',()=>{
  assert.deepEqual(reviewerCredentials({name:'  Dr. Liang Zhao ',email:' Test@Example.test '}),{name:'Dr. Liang Zhao',email:'test@example.test'});
  for(const [typed,stored]of [['Liang Zhao','Dr. Liang Zhao'],['Gregory Calip','Gregory “Greg” Calip'],['Greg Calip','Gregory “Greg” Calip'],['Dongyang Liu','Dongyang Liu (刘东阳)'],['Eric Chun Yong Chan','Eric Chun Yong Chan']])assert.equal(reviewerNameMatches(typed,stored),true);
@@ -14,9 +14,15 @@ test('reviewer tokens are random opaque values and only irreversible hashes are 
  const first=newReviewerToken(),second=newReviewerToken();assert.match(first,/^[a-f0-9]{64}$/);assert.notEqual(first,second);
  const hash=await hashReviewerValue(first);assert.match(hash,/^[a-f0-9]{64}$/);assert.notEqual(hash,first);assert.equal(await hashReviewerValue(first),hash);
 });
+test('explicit alternate emails retain the same name and active-profile checks',()=>{
+ const person={name:'Synthetic Reviewer',status:'verified',login_email:'primary@example.test',login_email_aliases:['alternate@example.test']};
+ for(const email of ['primary@example.test','alternate@example.test'])assert.doesNotThrow(()=>assertReviewerMatch(person,reviewerCredentials({name:person.name,email:email.toUpperCase()})));
+ assert.equal(reviewerEmailMatches(person,' ALTERNATE@EXAMPLE.TEST '),true);
+ for(const [profile,details]of [[person,{name:'Wrong Reviewer',email:'alternate@example.test'}],[person,{name:person.name,email:'unlisted@example.test'}],[{...person,status:'inactive'},{name:person.name,email:'alternate@example.test'}],[{...person,login_email:null},{name:person.name,email:'alternate@example.test'}],[{...person,login_email_aliases:[]},{name:person.name,email:'alternate@example.test'}]])assert.throws(()=>assertReviewerMatch(profile,details),e=>e.status===403);
+});
 test('the actual reviewer handler requires a server-issued session and keeps it bound to current profile and assignments',async()=>{
  const originalFetch=globalThis.fetch,originalDeno=globalThis.Deno;
- const person={id:'test-reviewer',name:'Synthetic Reviewer',status:'verified',login_email:'reviewer@example.test'};
+ const person={id:'test-reviewer',name:'Synthetic Reviewer',status:'verified',login_email:'reviewer@example.test',login_email_aliases:['alternate@example.test']};
  const sessions=new Map();let attempts=0,signCalls=0,editCalls=0;
  const packet={id:'assigned',number:1,title:'Test copy · Synthetic packet',revision:'r',isTest:true,testSourceCaseNumber:1,testSourceCaseId:'official-source',subtitle:'Overview',prompt:'A source passage',materials:[{id:'observed',name:'observed_data.csv',description:'Original review focus',format:'CSV'}],rubric:[],sections:[{id:'overview',number:'1.1',title:'Overview'},{id:'prompt',number:'1.2',title:'Prompt'},{id:'materials',number:'1.3',title:'Materials description'},{id:'rubric',number:'1.4',title:'Rubric'},{id:'ratings',number:'1.5',title:'Ratings'}]};
  globalThis.Deno={env:{get:n=>({PMXBENCH_FRONTEND_ORIGIN:'https://portal.example.test',SUPABASE_URL:'https://database.example.test',SUPABASE_SERVICE_ROLE_KEY:'unit-test-service-key'})[n]}};
@@ -31,7 +37,7 @@ test('the actual reviewer handler requires a server-issued session and keeps it 
   else if(path==='pmx_edit_comment'){editCalls++;if(payload.p_expected_version===99)return new Response(JSON.stringify({code:'PT409',message:'This comment changed elsewhere.'}),{status:409,headers:{'Content-Type':'application/json'}});assert.equal(payload.p_reviewer,person.id);assert.deepEqual(payload.p_visible_cases,['assigned']);data={id:payload.p_id,text:payload.p_text,quotes:[],reviewer_name:person.name,created_at:'2026-11-17T00:00:00Z',updated_at:'2026-11-17T01:00:00Z',edit_version:1};}
   else if(path==='pmx_settings')data={value:true};
   else if(path==='pmx_reserve_reviewer_attempt')data=++attempts<=10;
-  else if(path==='pmx_experts')data=(eq('login_email')===person.login_email||eq('id')===person.id)?{...person}:null;
+  else if(path==='pmx_experts')data=(eq('login_email')===person.login_email||eq('id')===person.id||person.login_email_aliases.some(email=>url.searchParams.get('login_email_aliases')==='cs.{'+email+'}'))?{...person}:null;
   else if(path==='pmx_assignments')data=[{case_id:'assigned'},{case_id:'retired'}];
   else if(path==='pmx_reviewer_sessions'){
    if(method==='POST'){sessions.set(payload.token_hash,{...payload,revoked_at:null});data=null;}
@@ -54,6 +60,11 @@ test('the actual reviewer handler requires a server-issued session and keeps it 
   const auth={reviewerToken:login.data.token,reviewerId:person.id};
   const state=await request('/api/session','GET',auth);assert.equal(state.status,200);assert.equal(state.data.role,'reviewer');assert.equal(state.data.identityMethod,'name_email_match');assert.equal(state.data.cases.length,1);assert.equal(state.data.cases[0].title,'Synthetic packet');assert.equal(state.data.cases[0].revision,'r-review-view-v1');assert.equal((await request('/api/cases/retired','GET',auth)).status,404);
   assert.deepEqual(state.data.review.feedback.map(c=>c.id),['active-feedback']);
+  const aliasLogin=await request('/api/reviewer-access','POST',{payload:{name:person.name,email:' ALTERNATE@EXAMPLE.TEST '}});assert.equal(aliasLogin.status,200);assert.equal(aliasLogin.data.reviewerId,login.data.reviewerId);
+  const aliasAuth={reviewerToken:aliasLogin.data.token,reviewerId:person.id};assert.equal((await request('/api/session','GET',aliasAuth)).status,200);assert.equal((await request('/api/admin/results','GET',aliasAuth)).status,403);
+  assert.equal((await request('/api/reviewer-access','POST',{payload:{name:'Other Person',email:'alternate@example.test'}})).status,403);
+  person.login_email_aliases=[];assert.equal((await request('/api/session','GET',aliasAuth)).status,401);assert.equal((await request('/api/session','GET',auth)).status,200);person.login_email_aliases=['alternate@example.test'];
+  assert.equal((await request('/api/reviewer-logout','POST',aliasAuth)).status,200);
   const editPath='/api/comments/11111111-1111-4111-8111-111111111111';
   const edited=await request(editPath,'PATCH',{...auth,payload:{text:'Revised comment',version:0}});assert.equal(edited.status,200);assert.equal(edited.data.version,1);assert.ok(edited.data.updatedAt);assert.equal(editCalls,1);
   assert.equal((await request(editPath,'PATCH',{...auth,payload:{text:'Try altering context',version:1,quotes:[]}})).status,400);assert.equal(editCalls,1);

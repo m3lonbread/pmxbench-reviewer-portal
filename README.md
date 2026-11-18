@@ -34,6 +34,9 @@ Create a Supabase Free project owned by the host. Apply the SQL migrations in fi
 6. `backend/supabase/migrations/202611130006_source_literature.sql`
 7. `backend/supabase/migrations/202611150007_case_material_guides.sql`
 8. `backend/supabase/migrations/202611170008_edit_comments.sql`
+9. `backend/supabase/migrations/202611180009_reviewer_email_aliases.sql`
+
+Alternate typed sign-in addresses can be configured explicitly in the private `pmx_experts.login_email_aliases` array. They use the same reviewer name, active profile, assignments, and saved reviews. Removing an alias ends sessions that used it; coordinator access is unchanged. Apply migration 202611180009 before deploying the updated functions.
 
 Prepare private initial data locally:
 

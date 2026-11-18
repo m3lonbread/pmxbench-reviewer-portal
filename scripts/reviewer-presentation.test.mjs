@@ -1,6 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {reviewerRubric,omittedRubricPassage} from '../src/components/review/rubric-structure.ts';
 import {shouldShowTutorial} from '../src/components/review/tutorial-state.ts';
+import {materialSummary,materialPassage} from '../src/components/review/material-summary.ts';
 test('review rubrics keep scored content and all gate rows while omitting supplementary notes',()=>{
  const scored={id:'criteria',rows:[['Criterion','Points','Assessment','Evidence'],['C5.1','10','Scored requirement','Full evidence']]};
  const gateHeading={id:'gates-heading',style:'Heading1',text:'Required pass fail gates'};
@@ -18,4 +19,14 @@ test('the tutorial opens on each reviewer login, stays dismissed on refresh, and
  assert.equal(shouldShowTutorial('reviewer',login,null),true);assert.equal(shouldShowTutorial('reviewer',login,seen),false);
  assert.equal(shouldShowTutorial('reviewer',{...login,expiresAt:'2026-11-17T23:00:00Z'},seen),true);assert.equal(shouldShowTutorial('reviewer',{...login,reviewerId:'reviewer-b'},seen),true);
  assert.equal(shouldShowTutorial('coordinator',login,null),false);assert.equal(shouldShowTutorial('preview',login,null),false);assert.equal(shouldShowTutorial('reviewer',null,null),false);
+});
+test('concise material summaries retain canonical quotation offsets and older passages remain addressable',()=>{
+ const summary='Measured evidence. '+('Preserve the observed endpoint and its original scientific units. ').repeat(8);
+ const material={id:'observed',name:'observed_data.csv',description:'Original description',guide:{summary,blocks:[{id:'use',label:'Use',text:'Previously described use'}],fields:[{id:'field-0',name:'time',text:'Original time definition'}],endpointCoverage:'Original endpoint units'}};
+ const preview=materialSummary(material);assert.ok(preview.text.length<=240);assert.equal(summary.slice(0,preview.text.length),preview.text);assert.equal(preview.suffix,'-summary');assert.equal(preview.truncated,true);
+ const c={id:'case1',materials:[material],materialsGuide:{revision:'guide-v1',objective:'Original objective',scope:'Original scope'}};
+ assert.deepEqual(materialPassage(c,'case1-material-observed-field-0'),{text:'Original time definition',revision:'guide-v1'});
+ assert.deepEqual(materialPassage(c,'case1-material-observed'),{text:'Original description',revision:undefined});
+ assert.equal(materialPassage(c,'unrelated'),null);
+ assert.equal(materialSummary({...material,name:'model_construction_contract.json',guide:{...material.guide,summary:'Model requirements. A much longer explanation.'}}).text,'Model requirements.');
 });

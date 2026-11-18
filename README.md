@@ -134,3 +134,10 @@ Reviewer orientation and rubric presentation:
 The five-step Review guide opens automatically for each new reviewer login. Dismissing it is remembered for that login in sessionStorage, so refreshing does not reopen it. Reviewers can reopen it with Review guide; coordinators and read-only previews do not receive the automatic prompt. The guide covers navigation, comparison and literature, quick ratings, source-linked/general comments, and saving/completion.
 
 Reviewer rubrics display all scored criteria and required pass/fail gates, while supplementary notes after the criteria are omitted. The original stored packet, block identifiers, and saved quotations remain unchanged. A historical quotation of an omitted appendix opens the current rubric with an explanation.
+
+
+Streamlined reviewer interface:
+
+The first case section is Review instructions, explaining the benchmark goal and the requested expert assessment. File materials display short source-verbatim summaries without the field catalog or lengthy detail blocks. A previously saved source link can still reveal its cited passage. The top-level tabs are Materials and Side by Side Tool; case ratings and key source papers remain available within each case.
+
+Selecting a passage now shows an Add comment popup. Highlighting alone does not change the chat. Choosing Add comment attaches the selected text and its case/subsection source, then focuses the comment field. General feedback remains available without a quotation. The tutorial describes this opt-in flow.

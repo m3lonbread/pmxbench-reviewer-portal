@@ -186,3 +186,10 @@ Review-instructions walkthrough step, 17 November 2026:
 - Added Review instructions as step 2, immediately after assigned cases. The guide returns to the document view, closes the case drawer, scrolls to and highlights the global instructions, and explains that experts assess each case and rubric for scientific soundness, clarity, and alignment. The next step remains the participant prompt.
 - The walkthrough now contains ten steps and its welcome count follows the step list automatically. Login/dismissal behavior is unchanged. No backend, assignment, case content, or saved review data was modified.
 - All 24 tests, frontend build, and static privacy audit passed. Pages deployment 44225784071 for 475c313 succeeded. Live browser checks verified assigned cases → instructions → prompt, Back restoring the instruction spotlight, and exactly one highlighted target. The test reviewer walkthrough is left open at step 2; no feedback, ratings, or completion state was submitted. Proof is saved in workspace outputs/pmxbench-walkthrough-review-instructions-20261117.png.
+
+
+Contract and prediction-target wording, 17 November 2026:
+
+- Updated both material descriptions in all 53 official cases and their test copies. The model construction contract now outlines expected input files, output artifacts, and analysis requirements. Prediction targets uses the coordinator's revised reporting/scenario/role wording, without the endpoint-example list.
+- Applied 106 private description changes with archived prior revisions. All 20,921 existing source-version entries remained resolvable in validation. Before/after hashes preserved every other guide field, case packet, expert profile, comment, review/rating row, and assignment. The private generation template was updated; no frontend or backend-function deployment was required.
+- Live browser verification confirmed both exact descriptions. No feedback or ratings were submitted, and the verification session/tabs were closed. Private imports, snapshots, and audits remain ignored; proof is stored in workspace outputs/pmxbench-material-role-descriptions-20261117.png.

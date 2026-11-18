@@ -138,6 +138,6 @@ Reviewer rubrics display all scored criteria and required pass/fail gates, while
 
 Streamlined reviewer interface:
 
-The first case section is Review instructions, explaining the benchmark goal and the requested expert assessment. File materials display short source-verbatim summaries without the field catalog or lengthy detail blocks. A previously saved source link can still reveal its cited passage. The top-level tabs are Materials and Side by Side Tool; case ratings and key source papers remain available within each case.
+The first case section is Review instructions, explaining the benchmark goal and the requested expert assessment. File materials display short summaries that preserve the source text without the field catalog or lengthy detail blocks. A previously saved source link can still reveal its cited passage. The top-level tabs are Materials and Side by Side Tool; case ratings and key source papers remain available within each case.
 
 Selecting a passage now shows an Add comment popup. Highlighting alone does not change the chat. Choosing Add comment attaches the selected text and its case/subsection source, then focuses the comment field. General feedback remains available without a quotation. The tutorial describes this opt-in flow.

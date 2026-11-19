@@ -146,6 +146,8 @@ Streamlined reviewer interface:
 
 Review instructions appear once above the case list, explaining the benchmark goal and requested expert assessment. Each case begins with a one-sentence Case goal statement before the participant prompt. Material descriptions are grouped into Operational (definitions, model construction rules, prediction targets) and Data (observations, treatment events, context, and literature), with concise, case-specific descriptions and no row or column counts. A previously saved source link can still reveal its cited passage. The top-level tabs are Materials and Side by Side Tool; case ratings and key source papers remain available within each case.
 
+The Cases and Review assistant controls collapse either side panel independently and let the reading area use the available width. Panels stay mounted while hidden, preserving drafts, attached quotations, comment edits, and panel state. Adding a passage comment reopens the assistant; the walkthrough opens the panel needed for its current step. Tablet and mobile drawers retain their responsive controls.
+
 Selecting a passage now shows an Add comment popup. Highlighting alone does not change the chat. Choosing Add comment attaches the selected text and its case/subsection source, then focuses the comment field. General feedback remains available without a quotation. The tutorial describes this opt-in flow.
 
 

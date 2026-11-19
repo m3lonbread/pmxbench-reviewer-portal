@@ -4,6 +4,7 @@ import {ArrowDownToLine,ArrowUpRight,Check,LoaderCircle,Plus,Search,Users} from 
 import {ratingFields,type ReviewCase} from '../../app/review-data';
 import {csvCell,downloadBlob} from '../../app/materials';
 import {fetchJson} from './session';
+import {AccessSetup} from './access-setup';
 
 type Status='preliminary'|'verified'|'inactive';
 type Person={id:string;name:string;email:string;login_email:string|null;affiliation:string;status:Status;modeling_area:string;research_focus:string;notes:string;source:string;source_row:number|null;outreach_status:string;linked:boolean;caseIds:string[];completed:number};
@@ -52,6 +53,7 @@ export function CoordinatorPanel({onPreview,onChanged}:{onPreview:(id:string)=>v
  const benchmarkCases=cases.filter(c=>!c.isTest);
  const visible=people.filter(p=>(filter==='all'||filter==='current'&&p.status!=='inactive'||p.status===filter)&&`${p.name} ${p.affiliation} ${p.login_email} ${p.modeling_area}`.toLowerCase().includes(search.toLowerCase()));
  return <div className="coordinator-panel">
+  <AccessSetup/>
   <div className="coordinator-heading"><span className="modal-icon"><Users size={23}/></span><div><div className="eyebrow">COORDINATOR WORKSPACE</div><h2>Experts & assignments</h2><p>Build your preliminary roster and plan up to three cases per expert. Confirm details as your reviewer list develops.</p></div></div>
   <div className="assignment-stats"><span><strong>{current.length}</strong> potential experts</span><span><strong>{people.filter(p=>p.status==='verified'&&!isTestReviewer(p)).length}</strong> verified</span><span><strong>{current.filter(p=>p.caseIds.length>0).length}</strong> with planned cases</span><span><strong>{new Set(people.filter(p=>p.status==='verified'&&!isTestReviewer(p)).flatMap(p=>p.caseIds).filter(id=>benchmarkCases.some(c=>c.id===id))).size} / {benchmarkCases.length}</strong> cases active</span></div>
   <div className="assignment-access-note"><Check size={14}/><p>Preliminary assignments are drafts. Mark an expert <strong>Verified</strong> after confirming their details to activate their cases. Activated experts enter their name and recorded email to open a review. The email is matched without sending a link or code; this does not verify email ownership. Names and contact emails are not listed publicly.</p></div>

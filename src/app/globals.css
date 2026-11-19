@@ -115,3 +115,35 @@ button:focus-visible,a:focus-visible{outline-color:#42867d;}
 @media(min-width:901px){.workspace.assistant-collapsed{--assistant-panel-width:0px}.workspace.assistant-collapsed>.chat-panel{display:none}}
 @media(min-width:651px) and (max-width:900px){.workspace{--case-panel-width:210px;grid-template-columns:var(--case-panel-width) minmax(0,1fr)}.workspace:has(.coordinator-panel){grid-template-columns:var(--case-panel-width) minmax(0,1fr)}}
 @media(max-width:650px){.panel-toggle{display:none}.sidebar-title-row{gap:6px}}
+
+/* Explicit case scopes share the existing reading tools. */
+.case-access-workspace .chat-panel,.case-access-workspace .mobile-toolbar>button:last-child{display:none}
+.case-access-workspace .review-progress{display:none}
+.case-access-workspace .case-end[hidden],.case-access-workspace .quick-rate-link[hidden]{display:none}
+.case-access-banner,.scoped-feedback-note{display:flex;align-items:center;gap:.65rem;padding:1rem;border:1px solid #89bdb9;background:#eff8f7;border-radius:10px;font-size:1rem;margin-bottom:1.3rem;color:#244f50}
+.case-access-setup{border:1px solid #89bdb9;border-radius:12px;padding:1.3rem;margin-bottom:2rem;background:#f6fbfa;font-size:1rem}
+.case-access-setup summary{display:flex;align-items:center;gap:.5rem;cursor:pointer;font-weight:650;font-size:1.1rem}
+.case-access-setup summary span{margin-left:auto;font-size:.875rem;font-weight:400}
+.case-access-setup p,.scoped-admin-panel p{font-size:1rem;line-height:1.55;white-space:pre-wrap}
+.access-scope-columns{display:grid;grid-template-columns:1fr 1fr;gap:1.3rem;margin:1.2rem 0}
+.access-scope-columns ul{padding-left:1.15rem;margin:.65rem 0}
+.access-scope-columns li{margin-bottom:.8rem;line-height:1.5;overflow-wrap:anywhere}
+.access-scope-columns li span,.access-scope-columns li small{display:block;font-size:.875rem}
+.access-activation-form{display:grid;gap:1rem;border-top:1px solid #c6dcda;padding-top:1.2rem}
+.access-activation-form label,.case-access-setup>label{display:grid;gap:.4rem;font-size:.95rem;font-weight:600}
+.access-activation-form input,.access-activation-form select,.case-access-setup>label select{width:100%;padding:.8rem;border:1px solid #93b8b5;border-radius:7px;background:white;font:inherit;color:#25464a}
+.access-activation-form>span{font-size:.875rem;line-height:1.5;color:#506b6c}
+.access-activation-form .button{justify-self:start;white-space:normal;text-align:left;font-size:.95rem;line-height:1.4}
+.scoped-admin-panel{font-size:1rem}
+.scoped-admin-panel h3{font-size:1.15rem;margin:2rem 0 1rem}
+.scoped-admin-actions{display:flex;flex-wrap:wrap;gap:.7rem;margin:1.3rem 0}
+.scoped-admin-panel .button{font-size:.875rem;white-space:normal}
+.scoped-reviewer{display:flex;gap:.6rem;align-items:center;padding:1rem 0;border-bottom:1px solid #d6e5e3}
+.scoped-reviewer>div{flex:1;min-width:0}.scoped-reviewer p{margin:.4rem 0}.scoped-reviewer small{font-size:.875rem}
+.scoped-assignment-editor,.scoped-rating,.scoped-comment{border:1px solid #c7ddda;border-radius:9px;padding:1.1rem;margin:.8rem 0;background:white}
+.scoped-assignment-editor label{display:flex;gap:.65rem;align-items:center;padding:.6rem 0}
+.scoped-rating dl{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}.scoped-rating dt{font-size:.875rem;color:#536a6c}.scoped-rating dd{margin:.3rem 0 0}
+.scoped-comment blockquote{border-left:3px solid #82b8b4;padding:.3rem 1rem;margin:1rem 0;background:#f6fbfa}
+.scoped-comment .source-link{font-size:.875rem;white-space:normal;text-align:left}
+@media(max-width:650px){.access-scope-columns,.scoped-rating dl{grid-template-columns:1fr}.case-access-setup{padding:1rem}.scoped-reviewer{flex-wrap:wrap}.scoped-reviewer>div{flex-basis:100%}}
+.case-access-workspace button[hidden]{display:none}

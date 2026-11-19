@@ -17,10 +17,11 @@ test('PostgreSQL keeps private data inaccessible and applies review changes atom
   await pg.exec(await readFile(new URL('../backend/supabase/migrations/202611150007_case_material_guides.sql',import.meta.url),'utf8'));
   await pg.exec(await readFile(new URL('../backend/supabase/migrations/202611170008_edit_comments.sql',import.meta.url),'utf8'));
   await pg.exec(await readFile(new URL('../backend/supabase/migrations/202611180009_reviewer_email_aliases.sql',import.meta.url),'utf8'));
+  await pg.exec(await readFile(new URL('../backend/supabase/migrations/202611190010_scoped_case_access.sql',import.meta.url),'utf8'));
   for(const id of ['case1','case2','case3','case4'])await pg.query('insert into pmx_cases(id,meta,packet) values($1,$2::jsonb,$3::jsonb)',[id,JSON.stringify({id}),JSON.stringify({id,prompt:'private prompt'})]);
   async function as(role,run){await pg.exec('set role '+role);try{return await run();}finally{await pg.exec('reset role');}}
   await t.test('anonymous and authenticated clients cannot read private tables or invoke privileged RPCs',async()=>{
-   for(const role of ['anon','authenticated'])await as(role,async()=>{for(const table of ['pmx_comment_edits','pmx_material_guides','pmx_literature','pmx_cases','pmx_experts','pmx_reviews','pmx_comments','pmx_assignments','pmx_settings','pmx_reviewer_sessions','pmx_reviewer_access_attempts'])await assert.rejects(pg.query('select * from '+table),/permission denied/);await assert.rejects(pg.query("select pmx_write_review('victim','case1','{}',true,'rev')"),/permission denied/);await assert.rejects(pg.query("select pmx_save_expert(null,'{}','attacker')"),/permission denied/);await assert.rejects(pg.query("select pmx_reserve_reviewer_attempt(repeat('a',64))"),/permission denied/);});
+   for(const role of ['anon','authenticated'])await as(role,async()=>{for(const table of ['pmx_case_groups','pmx_case_group_members','pmx_comment_edits','pmx_material_guides','pmx_literature','pmx_cases','pmx_experts','pmx_reviews','pmx_comments','pmx_assignments','pmx_settings','pmx_reviewer_sessions','pmx_reviewer_access_attempts'])await assert.rejects(pg.query('select * from '+table),/permission denied/);await assert.rejects(pg.query("select pmx_write_review('victim','case1','{}',true,'rev')"),/permission denied/);await assert.rejects(pg.query("select pmx_save_expert(null,'{}','attacker')"),/permission denied/);await assert.rejects(pg.query("select pmx_reserve_reviewer_attempt(repeat('a',64))"),/permission denied/);});
   });
   await t.test('one-to-three-case plans work; invalid case selections cannot partially activate an expert',async()=>{
    await as('service_role',async()=>{
@@ -79,6 +80,45 @@ test('PostgreSQL keeps private data inaccessible and applies review changes atom
     await pg.query('update pmx_comments set archived_at=now() where id=$1',[id]);
     await assert.rejects(edit('owner','Archived edit',1),/Comment not found/);
    });
+  });
+  await t.test('case groups activate explicitly and scoped assignment edits preserve outside cases atomically',async()=>{
+   const uid='22222222-2222-4222-8222-222222222222';
+   await pg.query('insert into auth.users(id) values($1)',[uid]);
+   for(const [id,email]of [['scoped-admin','admin@example.test'],['scoped-expert','faculty@example.test'],['outside-expert','outside@example.test']])await pg.query("insert into pmx_experts(id,name,login_email,status) values($1,$1,$2,'verified')",[id,email]);
+   await pg.query("insert into pmx_case_groups(id,label,source_case_ids) values('scope','Synthetic scope',array['case1','case2'])");
+   await pg.query("insert into pmx_case_group_members(reviewer_id,group_id,role) values('scoped-admin','scope','case_admin')");
+   const activate=()=>pg.query("select pmx_activate_case_group('scope','live','manage','owner@example.test')");
+   await assert.rejects(activate(),/Finish creating/);
+   assert.equal((await pg.query("select active from pmx_case_groups where id='scope'")).rows[0].active,false);
+   await pg.query("update pmx_case_group_members set auth_user_id=$1 where reviewer_id='scoped-admin'",[uid]);
+   await activate();await assert.rejects(activate(),/already active/);
+   for(const [person,id]of [['scoped-expert','case1'],['scoped-expert','case3'],['outside-expert','case4']])await pg.query("insert into pmx_assignments(reviewer_id,case_id,assigned_by) values($1,$2,'original')",[person,id]);
+   const before=(await pg.query("select * from pmx_assignments where reviewer_id='scoped-expert' and case_id='case3'")).rows[0];
+   const save=(cases,person='scoped-expert')=>pg.query("select pmx_save_scoped_assignments('scope',$1,$2,'admin@example.test')",[person,cases]);
+   await save(['case2']);
+   assert.deepEqual((await pg.query("select * from pmx_assignments where reviewer_id='scoped-expert' and case_id='case3'")).rows[0],before);
+   const expected=(await pg.query("select * from pmx_assignments where reviewer_id='scoped-expert' order by case_id")).rows;
+   for(const [cases,person]of [[['case4'],'scoped-expert'],[['case2','case2'],'scoped-expert'],[['case1'],'outside-expert'],[['case1'],'scoped-admin']])await assert.rejects(save(cases,person));
+   assert.deepEqual((await pg.query("select * from pmx_assignments where reviewer_id='scoped-expert' order by case_id")).rows,expected);
+   await pg.query("update pmx_case_groups set admin_mode='view_export' where id='scope'");
+   await assert.rejects(save(['case1']),/not enabled/);
+   for(const role of ['anon','authenticated'])await as(role,async()=>{
+    await assert.rejects(activate(),/permission denied/);
+    await assert.rejects(save(['case1']),/permission denied/);
+   });
+  });
+  await t.test('a test workspace copies current scientific content and keeps the original packet unchanged',async()=>{
+   const original={id:'case4',number:4,title:'Synthetic case',prompt:'Original prompt',rubric:[{id:'original-rubric',text:'Complete gate'}],materials:[{name:'data.csv'}],revision:'original-r1',sections:[{id:'original-section',number:'4.1',title:'Goal'}]};
+   await pg.query("update pmx_cases set packet=$1,meta=$2 where id='case4'",[JSON.stringify(original),JSON.stringify({id:'case4',number:4,title:original.title})]);
+   await pg.query("insert into pmx_case_groups(id,label,source_case_ids) values('sandbox','Synthetic sandbox',array['case4'])");
+   await pg.query("insert into pmx_experts(id,name) values('sandbox-admin','Synthetic sandbox admin')");
+   await pg.query("insert into auth.users(id) values('33333333-3333-4333-8333-333333333333')");
+   await pg.query("insert into pmx_case_group_members values('sandbox-admin','sandbox','case_admin','33333333-3333-4333-8333-333333333333')");
+   await pg.query("select pmx_activate_case_group('sandbox','test','view_export','owner@example.test')");
+   const copy=(await pg.query("select packet from pmx_cases where id='group-sandbox--case4'")).rows[0].packet;
+   assert.equal(copy.prompt,original.prompt);assert.deepEqual(copy.materials,original.materials);assert.equal(copy.rubric[0].text,original.rubric[0].text);assert.equal(copy.testSourceCaseId,'case4');assert.equal(copy.isTest,true);
+   assert.deepEqual((await pg.query("select packet from pmx_cases where id='case4'")).rows[0].packet,original);
+   assert.deepEqual((await pg.query("select case_ids from pmx_case_groups where id='sandbox'")).rows[0].case_ids,['group-sandbox--case4']);
   });
   await t.test('granular rating saves merge, missing values clear, and separate reviewers remain separate',async()=>{
    await as('service_role',async()=>{

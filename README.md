@@ -35,6 +35,7 @@ Create a Supabase Free project owned by the host. Apply the SQL migrations in fi
 7. `backend/supabase/migrations/202611150007_case_material_guides.sql`
 8. `backend/supabase/migrations/202611170008_edit_comments.sql`
 9. `backend/supabase/migrations/202611180009_reviewer_email_aliases.sql`
+10. `backend/supabase/migrations/202611190010_scoped_case_access.sql`
 
 Alternate typed sign-in addresses can be configured explicitly in the private `pmx_experts.login_email_aliases` array. They use the same reviewer name, active profile, assignments, and saved reviews. Removing an alias ends sessions that used it; coordinator access is unchanged. Apply migration 202611180009 before deploying the updated functions.
 
@@ -72,9 +73,19 @@ Disable it with the same statement using `false`. This stops reviewer case and r
 
 Open the portal with `?coordinator=1`. **Password** is the default coordinator sign-in method and does not send an email. The owner creates the coordinator account and its password through Supabase Authentication → Users, using the email in the private coordinator allowlist. Use a password for this portal; it may differ from the host’s GitHub or Supabase dashboard credentials.
 
-Coordinator sign-in is separate from reviewer name-and-email access. The backend still requires a confirmed account and checks the private coordinator allowlist for every request. Do not enable public coordinator signup or expose a backend key to provision accounts. The owner must enter, save, and submit their own password.
+Coordinator sign-in is separate from reviewer name-and-email access. The backend requires a confirmed account and checks the private owner allowlist or explicit case-admin membership for every request. Do not enable public coordinator signup or expose a backend key to provision accounts. The owner must enter and submit new passwords.
 
 Coordinator sign-in uses a password only. The portal does not request coordinator sign-in emails. Reviewer name-and-email access also requires no email sender.
+
+### Restricted case workspaces
+
+An owner can prepare a private case group and members in `pmx_case_groups` and `pmx_case_group_members` after applying migration `202611190010_scoped_case_access.sql`. These tables have no browser REST access. An inactive group grants no access. Group members are separate from faculty assignments and excluded from benchmark exports.
+
+The owner's **Restricted case access** form displays the prepared people and cases. The owner enters and submits the new admin password; the backend creates confirmed Supabase Auth accounts without sending email, then activates the group. Passwords are forwarded only to Auth and never written to application tables or returned in responses. The form does not reset existing passwords. A partial failure leaves the group inactive; retry with the same password to retain already-created accounts.
+
+Case admins use `?coordinator=1`, their own email, and the configured password. They receive explicit case grants, never the full coordinator allowlist. They can view/export only in-scope ratings and comments whose quotations all belong to their scope. Mixed-source comments and general feedback without a case anchor are omitted, including in reviewer previews. Contact details, global notes, other cases, access setup, and profile editing are unavailable. Optional assignment management changes only in-scope allocations for the scoped roster, preserves all outside assignments, and retains the ordinary three-case faculty limit. A case viewer uses the regular name/email entry and can read only the group's materials. Name/email matching never elevates a member to admin. Case-group materials are read-only and do not submit faculty ratings or comments.
+
+The setup supports live packets or isolated copies of the current real packets. Test copies remain excluded from benchmark exports. The authenticated owner retains full access. Revoking a group or deactivating its member blocks subsequent requests even with an existing session.
 
 After sign-in, confirm expert details, choose up to three cases, and set the profile to Verified to enable access. The recorded reviewer email is required for access and should match the address used in their reply. A preliminary profile may omit it until confirmed. No real experts are automatically activated or assigned by the seed.
 

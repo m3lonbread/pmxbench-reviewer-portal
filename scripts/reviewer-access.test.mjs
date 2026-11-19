@@ -23,7 +23,7 @@ test('explicit alternate emails retain the same name and active-profile checks',
 test('the actual reviewer handler requires a server-issued session and keeps it bound to current profile and assignments',async()=>{
  const originalFetch=globalThis.fetch,originalDeno=globalThis.Deno;
  const person={id:'test-reviewer',name:'Synthetic Reviewer',status:'verified',login_email:'reviewer@example.test',login_email_aliases:['alternate@example.test']};
- const sessions=new Map();let attempts=0,signCalls=0,editCalls=0;
+ const sessions=new Map();let attempts=0,signCalls=0,editCalls=0,scopedAccess=false;
  const packet={id:'assigned',number:1,title:'Test copy · Synthetic packet',revision:'r',isTest:true,testSourceCaseNumber:1,testSourceCaseId:'official-source',subtitle:'Overview',prompt:'A source passage',materials:[{id:'observed',name:'observed_data.csv',description:'Original review focus',format:'CSV'}],rubric:[],sections:[{id:'overview',number:'1.1',title:'Overview'},{id:'prompt',number:'1.2',title:'Prompt'},{id:'materials',number:'1.3',title:'Materials description'},{id:'rubric',number:'1.4',title:'Rubric'},{id:'ratings',number:'1.5',title:'Ratings'}]};
  globalThis.Deno={env:{get:n=>({PMXBENCH_FRONTEND_ORIGIN:'https://portal.example.test',SUPABASE_URL:'https://database.example.test',SUPABASE_SERVICE_ROLE_KEY:'unit-test-service-key'})[n]}};
  globalThis.fetch=async(input,init)=>{
@@ -35,6 +35,8 @@ test('the actual reviewer handler requires a server-issued session and keeps it 
   else if(path==='pmx_literature'){assert.equal(eq('case_id'),'official-source');data=url.searchParams.get('select')==='object_path'?{object_path:'a'.repeat(64)+'.pdf'}:[{is_key_source:true,meta:{id:'a'.repeat(32),title:'Source paper',fileName:'source.pdf',bytes:100,pages:1,sha256:'a'.repeat(64)}},{is_key_source:false,meta:{id:'c'.repeat(32),title:'Earlier background paper',fileName:'prior.pdf',bytes:100,pages:1,sha256:'c'.repeat(64)}}];}
   else if(path==='pmx_material_guides'){assert.equal(eq('case_id'),'official-source');data={payload:{revision:'guide-r1',objective:'Case objective',scope:'Case scope',files:{'observed_data.csv':{summary:'65 source observations with declared units.',blocks:[],fields:[{id:'field-0',name:'record_id',text:'Stable observation identifier.'}]}}}};}
   else if(path==='pmx_edit_comment'){editCalls++;if(payload.p_expected_version===99)return new Response(JSON.stringify({code:'PT409',message:'This comment changed elsewhere.'}),{status:409,headers:{'Content-Type':'application/json'}});assert.equal(payload.p_reviewer,person.id);assert.deepEqual(payload.p_visible_cases,['assigned']);data={id:payload.p_id,text:payload.p_text,quotes:[],reviewer_name:person.name,created_at:'2026-11-17T00:00:00Z',updated_at:'2026-11-17T01:00:00Z',edit_version:1};}
+  else if(path==='pmx_case_group_members')data=scopedAccess?{group_id:'synthetic-scope',role:'case_admin',auth_user_id:'different-auth-user'}:null;
+  else if(path==='pmx_case_groups')data={id:'synthetic-scope',label:'Synthetic case scope',active:true,case_ids:['assigned'],workspace_mode:'live',admin_mode:'manage'};
   else if(path==='pmx_settings')data={value:true};
   else if(path==='pmx_reserve_reviewer_attempt')data=++attempts<=10;
   else if(path==='pmx_experts')data=(eq('login_email')===person.login_email||eq('id')===person.id||person.login_email_aliases.some(email=>url.searchParams.get('login_email_aliases')==='cs.{'+email+'}'))?{...person}:null;
@@ -60,6 +62,7 @@ test('the actual reviewer handler requires a server-issued session and keeps it 
   const auth={reviewerToken:login.data.token,reviewerId:person.id};
   const state=await request('/api/session','GET',auth);assert.equal(state.status,200);assert.equal(state.data.role,'reviewer');assert.equal(state.data.identityMethod,'name_email_match');assert.equal(state.data.cases.length,1);assert.equal(state.data.cases[0].title,'Synthetic packet');assert.equal(state.data.cases[0].revision,'r-review-view-v1');assert.equal((await request('/api/cases/retired','GET',auth)).status,404);
   assert.deepEqual(state.data.review.feedback.map(c=>c.id),['active-feedback']);
+  scopedAccess=true;const scoped=await request('/api/session','GET',auth);assert.equal(scoped.status,200);assert.equal(scoped.data.role,'case_viewer');assert.equal(scoped.data.readOnly,true);assert.equal((await request('/api/admin/results','GET',auth)).status,403);assert.equal((await request('/api/comments','POST',{...auth,payload:{text:'No admin elevation'}})).status,403);scopedAccess=false;
   const aliasLogin=await request('/api/reviewer-access','POST',{payload:{name:person.name,email:' ALTERNATE@EXAMPLE.TEST '}});assert.equal(aliasLogin.status,200);assert.equal(aliasLogin.data.reviewerId,login.data.reviewerId);
   const aliasAuth={reviewerToken:aliasLogin.data.token,reviewerId:person.id};assert.equal((await request('/api/session','GET',aliasAuth)).status,200);assert.equal((await request('/api/admin/results','GET',aliasAuth)).status,403);
   assert.equal((await request('/api/reviewer-access','POST',{payload:{name:'Other Person',email:'alternate@example.test'}})).status,403);

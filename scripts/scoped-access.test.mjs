@@ -19,7 +19,7 @@ test('the actual handler limits authenticated case admins across packets, previe
  globalThis.Deno={env:{get:n=>({PMXBENCH_FRONTEND_ORIGIN:'https://portal.example.test',SUPABASE_URL:'https://scoped-database.example.test',SUPABASE_SERVICE_ROLE_KEY:'synthetic-test-key'})[n]}};
  globalThis.fetch=async(input,init)=>{
   const url=new URL(typeof input==='string'?input:input.url??String(input)),path=url.pathname.split('/').at(-1),method=init?.method??'GET';
-  const eq=k=>url.searchParams.get(k)?.replace(/^eq\./,'');
+  const eq=k=>{const value=url.searchParams.get(k);return value?.startsWith('eq.')?value.slice(3):undefined;};
   let data=[];
   if(url.pathname==='/auth/v1/user')data={id:currentId,email:currentEmail,email_confirmed_at:'2026-01-01T00:00:00Z'};
   else if(path==='pmx_settings')data={value:['owner@example.test']};
@@ -36,7 +36,7 @@ test('the actual handler limits authenticated case admins across packets, previe
   else if(path==='pmx_comments')data=eq('reviewer_id')?(eq('reviewer_id')==='faculty'?comments:[]):comments;
   else if(path==='pmx_literature')data=[];
   else if(path==='pmx_material_guides')data=null;
-  else if(path==='pmx_save_scoped_assignments'){writes++;data=null;}
+  else if(path==='pmx_add_scoped_reviewer'){const body=JSON.parse(init.body);assert.equal(body.p_group,'scope');assert.deepEqual(body.p_cases,['case1']);assert.equal(body.p_email,'new@example.test');writes++;data={saved:true,created:true,id:'new-reviewer',addedAssignments:1};}
   else throw Error('Unexpected operation '+path+' '+method);
   return new Response(JSON.stringify(data),{status:200,headers:{'Content-Type':'application/json'}});
  };
@@ -55,8 +55,14 @@ test('the actual handler limits authenticated case admins across packets, previe
   assert.equal((await request('/api/admin/reviewers/faculty','PATCH',{status:'inactive'})).status,403);
   assert.equal((await request('/api/admin/reviewers','POST',{name:'New expert'})).status,403);
   assert.equal((await request('/api/admin/assignments/faculty','PUT',{caseIds:['case1']})).status,403);assert.equal(writes,0);
-  group.admin_mode='manage';assert.equal((await request('/api/admin/assignments/faculty','PUT',{caseIds:['outside']})).status,403);assert.equal(writes,0);
-  assert.equal((await request('/api/admin/assignments/faculty','PUT',{caseIds:['case1']})).status,200);assert.equal(writes,1);
+  group.admin_mode='manage';
+  for(const cases of [['outside'],['case1'],[]])assert.equal((await request('/api/admin/assignments/faculty','PUT',{caseIds:cases})).status,403);assert.equal(writes,0);
+  const newReviewer={name:'New reviewer',loginEmail:' NEW@example.test ',caseIds:['case1']};
+  assert.equal((await request('/api/admin/reviewers','POST',{...newReviewer,status:'inactive'})).status,400);
+  assert.equal((await request('/api/admin/reviewers','POST',{...newReviewer,caseIds:['outside']})).status,403);
+  assert.equal((await request('/api/admin/reviewers','POST',{...newReviewer,caseIds:[]})).status,400);
+  assert.equal(writes,0);const added=await request('/api/admin/reviewers','POST',newReviewer);assert.equal(added.status,200);assert.equal(added.data.addedAssignments,1);assert.equal(writes,1);
+  const roster=await request('/api/admin/reviewers');assert.equal(roster.data.canAddReviewers,true);assert.equal(roster.data.canManageAssignments,undefined);
   assert.equal((await request('/api/comments','POST',{text:'No submissions in collaborator view'})).status,403);
   assert.equal((await request('/api/reviews','PATCH',{caseId:'case1',reviewed:true})).status,403);
   member.auth_user_id='other-user';assert.equal((await request('/api/session')).status,403);member.auth_user_id='user-admin';

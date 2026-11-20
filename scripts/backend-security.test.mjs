@@ -18,6 +18,7 @@ test('PostgreSQL keeps private data inaccessible and applies review changes atom
   await pg.exec(await readFile(new URL('../backend/supabase/migrations/202611170008_edit_comments.sql',import.meta.url),'utf8'));
   await pg.exec(await readFile(new URL('../backend/supabase/migrations/202611180009_reviewer_email_aliases.sql',import.meta.url),'utf8'));
   await pg.exec(await readFile(new URL('../backend/supabase/migrations/202611190010_scoped_case_access.sql',import.meta.url),'utf8'));
+  await pg.exec(await readFile(new URL('../backend/supabase/migrations/202611190011_add_only_case_reviewers.sql',import.meta.url),'utf8'));
   for(const id of ['case1','case2','case3','case4'])await pg.query('insert into pmx_cases(id,meta,packet) values($1,$2::jsonb,$3::jsonb)',[id,JSON.stringify({id}),JSON.stringify({id,prompt:'private prompt'})]);
   async function as(role,run){await pg.exec('set role '+role);try{return await run();}finally{await pg.exec('reset role');}}
   await t.test('anonymous and authenticated clients cannot read private tables or invoke privileged RPCs',async()=>{
@@ -81,7 +82,7 @@ test('PostgreSQL keeps private data inaccessible and applies review changes atom
     await assert.rejects(edit('owner','Archived edit',1),/Comment not found/);
    });
   });
-  await t.test('case groups activate explicitly and scoped assignment edits preserve outside cases atomically',async()=>{
+  await t.test('case admins can only append reviewer allocations; existing profiles and assignment rows stay intact',async()=>{
    const uid='22222222-2222-4222-8222-222222222222';
    await pg.query('insert into auth.users(id) values($1)',[uid]);
    for(const [id,email]of [['scoped-admin','admin@example.test'],['scoped-expert','faculty@example.test'],['outside-expert','outside@example.test']])await pg.query("insert into pmx_experts(id,name,login_email,status) values($1,$1,$2,'verified')",[id,email]);
@@ -89,23 +90,40 @@ test('PostgreSQL keeps private data inaccessible and applies review changes atom
    await pg.query("insert into pmx_case_group_members(reviewer_id,group_id,role) values('scoped-admin','scope','case_admin')");
    const activate=()=>pg.query("select pmx_activate_case_group('scope','live','manage','owner@example.test')");
    await assert.rejects(activate(),/Finish creating/);
-   assert.equal((await pg.query("select active from pmx_case_groups where id='scope'")).rows[0].active,false);
    await pg.query("update pmx_case_group_members set auth_user_id=$1 where reviewer_id='scoped-admin'",[uid]);
    await activate();await assert.rejects(activate(),/already active/);
    for(const [person,id]of [['scoped-expert','case1'],['scoped-expert','case3'],['outside-expert','case4']])await pg.query("insert into pmx_assignments(reviewer_id,case_id,assigned_by) values($1,$2,'original')",[person,id]);
-   const before=(await pg.query("select * from pmx_assignments where reviewer_id='scoped-expert' and case_id='case3'")).rows[0];
-   const save=(cases,person='scoped-expert')=>pg.query("select pmx_save_scoped_assignments('scope',$1,$2,'admin@example.test')",[person,cases]);
-   await save(['case2']);
-   assert.deepEqual((await pg.query("select * from pmx_assignments where reviewer_id='scoped-expert' and case_id='case3'")).rows[0],before);
-   const expected=(await pg.query("select * from pmx_assignments where reviewer_id='scoped-expert' order by case_id")).rows;
-   for(const [cases,person]of [[['case4'],'scoped-expert'],[['case2','case2'],'scoped-expert'],[['case1'],'outside-expert'],[['case1'],'scoped-admin']])await assert.rejects(save(cases,person));
-   assert.deepEqual((await pg.query("select * from pmx_assignments where reviewer_id='scoped-expert' order by case_id")).rows,expected);
+   await pg.query("update pmx_experts set login_email_aliases=array['faculty-alias@example.test'] where id='scoped-expert'");
+   const before=(await pg.query("select * from pmx_assignments order by reviewer_id,case_id")).rows;
+   const profile=(await pg.query("select * from pmx_experts where id='scoped-expert'")).rows[0];
+   const add=(name,email,cases)=>pg.query("select pmx_add_scoped_reviewer('scope',$1,$2,$3,'admin@example.test') item",[name,email,cases]);
+   const result=(await as('service_role',()=>add('scoped-expert','faculty@example.test',['case2']))).rows[0].item;
+   assert.equal(result.addedAssignments,1);assert.equal(result.created,false);
+   for(const row of before)assert.deepEqual((await pg.query('select * from pmx_assignments where reviewer_id=$1 and case_id=$2',[row.reviewer_id,row.case_id])).rows[0],row);
+   assert.deepEqual((await pg.query("select * from pmx_experts where id='scoped-expert'")).rows[0],profile);
+   const after=(await pg.query("select * from pmx_assignments order by reviewer_id,case_id")).rows;
+   assert.equal((await add('scoped-expert','faculty-alias@example.test',['case1','case2'])).rows[0].item.addedAssignments,0);
+   assert.deepEqual((await pg.query("select * from pmx_assignments order by reviewer_id,case_id")).rows,after);
+   for(const [name,email,cases]of [['Wrong name','faculty@example.test',['case1']],['scoped-expert','faculty@example.test',['case3']],['New invalid','new-invalid@example.test',['case1','case1']],['New invalid','new-invalid@example.test',[]],['scoped-expert','different@example.test',['case1']],['scoped-admin','admin@example.test',['case1']]])await assert.rejects(add(name,email,cases));
+   await pg.query("update pmx_case_groups set case_ids=array['case1','case2','case4'] where id='scope'");
+   await assert.rejects(add('scoped-expert','faculty@example.test',['case4']),/three-case limit/);
+   assert.deepEqual((await pg.query("select * from pmx_assignments order by reviewer_id,case_id")).rows,after);
+   const fresh=(await add('New synthetic reviewer',' NEW@example.test ',['case1','case2'])).rows[0].item;
+   assert.equal(fresh.created,true);assert.equal(fresh.addedAssignments,2);
+   const newPerson=(await pg.query('select * from pmx_experts where id=$1',[fresh.id])).rows[0];assert.equal(newPerson.status,'verified');assert.equal(newPerson.login_email,'new@example.test');
+   for(const status of ['preliminary','inactive']){await pg.query('update pmx_experts set status=$1 where id=$2',[status,fresh.id]);await assert.rejects(add(newPerson.name,newPerson.login_email,['case4']),/coordinator/);}
+   await pg.query("insert into pmx_settings values('coordinator_emails',$1::jsonb)",[JSON.stringify(['owner@example.test'])]);
+   await assert.rejects(add('Owner','owner@example.test',['case1']),/coordinator/);
    await pg.query("update pmx_case_groups set admin_mode='view_export' where id='scope'");
-   await assert.rejects(save(['case1']),/not enabled/);
-   for(const role of ['anon','authenticated'])await as(role,async()=>{
-    await assert.rejects(activate(),/permission denied/);
-    await assert.rejects(save(['case1']),/permission denied/);
-   });
+   await assert.rejects(add('Another reviewer','another@example.test',['case1']),/not enabled/);
+   assert.equal((await pg.query("select count(*)::int n from pmx_experts where login_email='another@example.test'")).rows[0].n,0);
+   const old=()=>pg.query("select pmx_save_scoped_assignments('scope','scoped-expert',array['case2'],'admin@example.test')");
+   await assert.rejects(old(),/protected/);
+   for(const role of ['anon','authenticated','service_role'])await as(role,()=>assert.rejects(old(),/permission denied/));
+   for(const role of ['anon','authenticated'])await as(role,()=>assert.rejects(add('Unauthorized','unauthorized@example.test',['case1']),/permission denied/));
+   // The full owner still has the existing explicit edit capability.
+   await as('service_role',()=>pg.query("select pmx_save_expert('scoped-expert','{\"caseIds\":[\"case1\",\"case3\"]}'::jsonb,'owner@example.test')"));
+   assert.deepEqual((await pg.query("select case_id from pmx_assignments where reviewer_id='scoped-expert' order by case_id")).rows.map(r=>r.case_id),['case1','case3']);
   });
   await t.test('a test workspace copies current scientific content and keeps the original packet unchanged',async()=>{
    const original={id:'case4',number:4,title:'Synthetic case',prompt:'Original prompt',rubric:[{id:'original-rubric',text:'Complete gate'}],materials:[{name:'data.csv'}],revision:'original-r1',sections:[{id:'original-section',number:'4.1',title:'Goal'}]};

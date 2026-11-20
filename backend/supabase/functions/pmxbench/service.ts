@@ -94,7 +94,7 @@ async function scopedAdmin(a:Actor,p:string,method:string,data:Record<string,any
   const allocations=await collect(()=>db.from('pmx_assignments').select('reviewer_id,case_id').in('case_id',ids).order('reviewer_id').order('case_id'));
   const reviewerIds=[...new Set(allocations.map((r:any)=>r.reviewer_id))];
   const [people,progress]=reviewerIds.length?await Promise.all([collect(()=>db.from('pmx_experts').select('id,name,status').in('id',reviewerIds).order('name').order('id')),collect(()=>db.from('pmx_reviews').select('reviewer_id,case_id,reviewed').in('case_id',ids).order('reviewer_id').order('case_id'))]):[[],[]];
-  return {scoped:true,canManageAssignments:access.adminMode==='manage',reviewers:people.map((person:any)=>{const caseIds=allocations.filter((r:any)=>r.reviewer_id===person.id).map((r:any)=>r.case_id);return {...limitedPerson(person),caseIds,completed:progress.filter((r:any)=>r.reviewer_id===person.id&&caseIds.includes(r.case_id)&&r.reviewed).length};}),cases:(await meta()).filter((c:any)=>ids.includes(c.id))};
+  return {scoped:true,canAddReviewers:access.adminMode==='manage',reviewers:people.map((person:any)=>{const caseIds=allocations.filter((r:any)=>r.reviewer_id===person.id).map((r:any)=>r.case_id);return {...limitedPerson(person),caseIds,completed:progress.filter((r:any)=>r.reviewer_id===person.id&&caseIds.includes(r.case_id)&&r.reviewed).length};}),cases:(await meta()).filter((c:any)=>ids.includes(c.id))};
  }
  if(p==='/api/admin/results'&&method==='GET'){
   const [people,allocations,reviews,comments]=await Promise.all([collect(()=>db.from('pmx_experts').select('id,name,status,source').order('name').order('id')),collect(()=>db.from('pmx_assignments').select('reviewer_id,case_id').in('case_id',ids).order('reviewer_id').order('case_id')),collect(()=>db.from('pmx_reviews').select('*').in('case_id',ids).order('reviewer_id').order('case_id')),collect(()=>db.from('pmx_comments').select('*').order('created_at').order('id'))]);
@@ -102,12 +102,15 @@ async function scopedAdmin(a:Actor,p:string,method:string,data:Record<string,any
   const filtered=access.workspaceMode==='live'?benchmarkResults(people,allocations,reviews,comments,allowedCases):{reviewers:people,assignments:allocations,caseReviews:reviews,comments};
   return {schemaVersion:6,exportedAt:new Date().toISOString(),scope:{label:access.label,caseIds:ids,workspaceMode:access.workspaceMode},...scopedResults(filtered.reviewers,filtered.assignments,filtered.caseReviews,filtered.comments,ids)};
  }
- const match=p.match(/^\/api\/admin\/assignments\/([a-zA-Z0-9_-]+)$/);
- if(match&&method==='PUT'){
-  if(access.adminMode!=='manage')throw new ApiError(403,'Assignment management is not enabled for this scope.');
+ if(p==='/api/admin/reviewers'&&method==='POST'){
+  if(access.adminMode!=='manage')throw new ApiError(403,'Adding reviewers is not enabled for this scope.');
+  if(Object.keys(data).some(k=>!['name','loginEmail','caseIds'].includes(k)))throw new ApiError(400,'Only the reviewer name, email, and new case selections can be supplied.');
+  assertProfile(data);
+  if(typeof data.name!=='string'||!data.name.trim()||typeof data.loginEmail!=='string'||!/^\S+@\S+\.\S+$/.test(data.loginEmail.trim()))throw new ApiError(400,'Enter a full name and valid reviewer email.');
   assertCases(data.caseIds);
+  if(!data.caseIds.length)throw new ApiError(400,'Choose one to three cases.');
   if(data.caseIds.some((id:string)=>!ids.includes(id)))throw new ApiError(403,'Choose cases within your case scope.');
-  await query(db.rpc('pmx_save_scoped_assignments',{p_group:access.id,p_reviewer:match[1],p_cases:data.caseIds,p_changed_by:a.email}));return {saved:true};
+  return query(db.rpc('pmx_add_scoped_reviewer',{p_group:access.id,p_name:data.name.trim(),p_email:data.loginEmail.trim().toLowerCase(),p_cases:data.caseIds,p_changed_by:a.email}));
  }
  throw new ApiError(403,'This action is outside your case admin permissions.');
 }

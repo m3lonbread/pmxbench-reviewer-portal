@@ -147,3 +147,8 @@ button:focus-visible,a:focus-visible{outline-color:#42867d;}
 .scoped-comment .source-link{font-size:.875rem;white-space:normal;text-align:left}
 @media(max-width:650px){.access-scope-columns,.scoped-rating dl{grid-template-columns:1fr}.case-access-setup{padding:1rem}.scoped-reviewer{flex-wrap:wrap}.scoped-reviewer>div{flex-basis:100%}}
 .case-access-workspace button[hidden]{display:none}
+.scoped-assignment-policy{margin:1rem 0;color:#315957}
+.scoped-add-reviewer .scoped-reviewer-field{display:grid;gap:.45rem;font-size:1rem;margin:.8rem 0}
+.scoped-reviewer-field input{width:100%;min-width:0;border:1px solid #a4c4c1;border-radius:7px;padding:.75rem;font:inherit;background:#fff}
+.scoped-add-reviewer fieldset{border:1px solid #c7ddda;border-radius:8px;margin:1rem 0;padding:.8rem 1rem}
+.scoped-add-reviewer legend{padding:0 .4rem;font-size:.95rem;font-weight:600}
